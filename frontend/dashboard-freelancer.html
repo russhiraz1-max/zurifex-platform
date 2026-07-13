@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freelancer Dashboard - Zurifex 🇰🇪</title>
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+
+        /* ============================================================
+           BACKGROUND
+           ============================================================ */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        .bg-canvas::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .glow-orb:nth-child(1) {
+            width: 500px;
+            height: 500px;
+            top: -200px;
+            right: -100px;
+            background: #1a3a8a;
+        }
+        .glow-orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            bottom: -150px;
+            left: -100px;
+            background: #7a1a5a;
+        }
+        .glow-orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(26, 58, 138, 0.2);
+        }
+
+        /* ============================================================
+           NAVBAR
+           ============================================================ */
+        nav {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 40px;
+            background: rgba(10, 10, 30, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo span {
+            -webkit-text-fill-color: initial;
+            color: #fff;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .nav-right .user-info {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+        }
+        .nav-right .user-info strong {
+            color: #fff;
+        }
+        .nav-right .role-badge {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid rgba(74, 222, 128, 0.15);
+        }
+        .btn-logout {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border-color: rgba(255,255,255,0.2);
+        }
+        .btn-nav {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-nav:hover {
+            background: rgba(59, 130, 246, 0.25);
+        }
+        .btn-nav.active {
+            background: rgba(59, 130, 246, 0.3);
+            color: #fff;
+        }
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+        }
+        .notification-bell .badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #f87171;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ============================================================
+           DASHBOARD LAYOUT
+           ============================================================ */
+        .dashboard {
+            position: relative;
+            z-index: 10;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 28px 40px 60px;
+        }
+
+        /* ============================================================
+           WELCOME SECTION
+           ============================================================ */
+        .welcome {
+            margin-bottom: 28px;
+        }
+        .welcome h1 {
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .welcome h1 span {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome p {
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+            font-size: 15px;
+        }
+        .welcome .last-login {
+            color: rgba(255,255,255,0.2);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           QUICK ACTIONS
+           ============================================================ */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+        .quick-actions .qa-btn {
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(20, 20, 50, 0.5);
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .quick-actions .qa-btn:hover {
+            background: rgba(30, 30, 70, 0.5);
+            border-color: rgba(59, 130, 246, 0.2);
+            color: #fff;
+        }
+        .quick-actions .qa-btn.primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border: none;
+            color: #fff;
+        }
+        .quick-actions .qa-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+        }
+
+        /* ============================================================
+           STATS GRID
+           ============================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s;
+        }
+        .stat-card:hover {
+            border-color: rgba(255,255,255,0.1);
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        .stat-card .value {
+            font-size: 30px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .stat-card .value.green { color: #4ade80; }
+        .stat-card .value.blue { color: #60a5fa; }
+        .stat-card .value.purple { color: #a78bfa; }
+        .stat-card .value.orange { color: #fb923c; }
+        .stat-card .value.red { color: #f87171; }
+        .stat-card .sub-text {
+            font-size: 12px;
+            color: rgba(255,255,255,0.2);
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           SECTION TITLE
+           ============================================================ */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .section-title .count {
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+            font-weight: 400;
+        }
+        .section-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .section-actions button {
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(20, 20, 50, 0.5);
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .section-actions button:hover {
+            background: rgba(30, 30, 70, 0.5);
+            color: #fff;
+        }
+        .section-actions button.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        /* ============================================================
+           TASK GRID
+           ============================================================ */
+        .task-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .task-card {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            padding: 22px 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s;
+        }
+        .task-card:hover {
+            border-color: rgba(59, 130, 246, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .task-card .task-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .task-card .task-category {
+            display: inline-block;
+            font-size: 11px;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 12px;
+            border-radius: 12px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+        }
+        .task-card .task-desc {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+        .task-card .task-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .task-card .task-meta .budget {
+            color: #4ade80;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .task-card .task-meta .advertisor {
+            color: rgba(255,255,255,0.3);
+            font-size: 12px;
+        }
+        .task-card .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+        .task-card .task-footer .progress {
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+        }
+        .task-card .task-footer .progress .bar {
+            display: inline-block;
+            width: 60px;
+            height: 4px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 4px;
+            margin-left: 8px;
+            overflow: hidden;
+            vertical-align: middle;
+        }
+        .task-card .task-footer .progress .bar .fill {
+            height: 100%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .btn-apply {
+            padding: 6px 18px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-apply:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+        .btn-apply:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-apply.applied {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            cursor: default;
+        }
+
+        /* ============================================================
+           MY APPLICATIONS SECTION
+           ============================================================ */
+        .application-item {
+            background: rgba(20, 20, 50, 0.3);
+            border-radius: 10px;
+            padding: 16px 20px;
+            border: 1px solid rgba(255,255,255,0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .application-item .app-info .app-title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .application-item .app-info .app-status {
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+        }
+        .application-item .app-status-badge {
+            padding: 4px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .app-status-badge.pending {
+            background: rgba(251, 146, 60, 0.15);
+            color: #fb923c;
+        }
+        .app-status-badge.approved {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+        }
+        .app-status-badge.rejected {
+            background: rgba(248, 113, 113, 0.15);
+            color: #f87171;
+        }
+
+        /* ============================================================
+           NOTIFICATIONS DROPDOWN
+           ============================================================ */
+        .notif-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: rgba(16, 16, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 14px;
+            padding: 16px 20px;
+            min-width: 320px;
+            max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 16px 60px rgba(0,0,0,0.6);
+            margin-top: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .notif-dropdown.show {
+            display: block;
+        }
+        .notif-dropdown .notif-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+        }
+        .notif-dropdown .notif-item:last-child {
+            border-bottom: none;
+        }
+        .notif-dropdown .notif-item .time {
+            font-size: 11px;
+            color: rgba(255,255,255,0.2);
+        }
+        .notif-dropdown .notif-item .notif-msg {
+            margin-bottom: 2px;
+        }
+
+        /* ============================================================
+           EMPTY STATE & LOADING
+           ============================================================ */
+        .loading-state {
+            color: rgba(255,255,255,0.3);
+            text-align: center;
+            padding: 50px 20px;
+            font-size: 15px;
+        }
+        .loading-state .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,0.05);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .empty-state {
+            color: rgba(255,255,255,0.3);
+            text-align: center;
+            padding: 50px 20px;
+            font-size: 16px;
+        }
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state .sub {
+            font-size: 14px;
+            color: rgba(255,255,255,0.15);
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           CREDIT FOOTER
+           ============================================================ */
+        .credit {
+            text-align: center;
+            padding: 24px 20px 12px;
+            color: rgba(255,255,255,0.1);
+            font-size: 13px;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            margin-top: 20px;
+        }
+        .credit .brand {
+            color: rgba(255,255,255,0.3);
+            font-weight: 500;
+        }
+        .credit .brand span {
+            color: #60a5fa;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 16px;
+            }
+            .dashboard {
+                padding: 16px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .task-grid {
+                grid-template-columns: 1fr;
+            }
+            .welcome h1 {
+                font-size: 24px;
+            }
+            .quick-actions {
+                gap: 8px;
+            }
+            .quick-actions .qa-btn {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+            .nav-right .user-info {
+                font-size: 12px;
+            }
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .notif-dropdown {
+                min-width: 280px;
+                right: -60px;
+            }
+            .stat-card .value {
+                font-size: 24px;
+            }
+        }
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            nav {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .nav-right {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECURITY CHECKS
+     ============================================================ -->
+<script>
+    (function() {
+        const userData = localStorage.getItem('zurifex_user');
+        if (!userData) {
+            window.location.href = 'login.html';
+            return;
+        }
+        try {
+            const user = JSON.parse(userData);
+            if (!user || !user.id) {
+                localStorage.removeItem('zurifex_user');
+                localStorage.removeItem('zurifex_token');
+                window.location.href = 'login.html';
+                return;
+            }
+            // Check profile completion
+            if (!user.phone && !user.location && !user.bio) {
+                window.location.href = 'setup-profile.html';
+                return;
+            }
+            // Role check
+            if (user.role === 'admin') {
+                window.location.href = 'admin-panel.html';
+                return;
+            }
+            if (user.role === 'advertisor') {
+                window.location.href = 'dashboard-advertisor.html';
+                return;
+            }
+            // Store user globally
+            window.ZURIFEX_USER = user;
+        } catch (e) {
+            localStorage.removeItem('zurifex_user');
+            localStorage.removeItem('zurifex_token');
+            window.location.href = 'login.html';
+        }
+    })();
+</script>
+
+<!-- ============================================================
+     BACKGROUND
+     ============================================================ -->
+<div class="bg-canvas">
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+</div>
+
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
+<nav>
+    <div class="logo"><span>🇰🇪</span>Zurifex</div>
+    <div class="nav-right">
+        <span class="user-info">👋 <strong id="userName">Freelancer</strong></span>
+        <span class="role-badge" id="roleBadge">Freelancer</span>
+        <div style="position:relative;display:inline-block;">
+            <div class="notification-bell" onclick="toggleNotifications()">
+                🔔
+                <span class="badge" id="notifCount">0</span>
+                <div class="notif-dropdown" id="notifDropdown">
+                    <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:rgba(255,255,255,0.6);">Notifications</div>
+                    <div id="notifList">
+                        <div style="color:rgba(255,255,255,0.2);font-size:13px;padding:8px 0;">No notifications yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+</nav>
+
+<!-- ============================================================
+     DASHBOARD
+     ============================================================ -->
+<div class="dashboard">
+
+    <!-- ============================================================
+         WELCOME
+         ============================================================ -->
+    <div class="welcome">
+        <h1>Welcome back, <span id="welcomeName">Freelancer</span> 👋</h1>
+        <p id="welcomeSub">Complete tasks and earn money. Here's your dashboard overview.</p>
+        <div class="last-login" id="lastLogin">Last login: Today</div>
+    </div>
+
+    <!-- ============================================================
+         QUICK ACTIONS
+         ============================================================ -->
+    <div class="quick-actions">
+        <button class="qa-btn primary" onclick="document.getElementById('taskContainer').scrollIntoView({behavior:'smooth'})">
+            🔥 Browse Tasks
+        </button>
+        <button class="qa-btn" onclick="document.getElementById('myApplications').scrollIntoView({behavior:'smooth'})">
+            📋 My Applications
+        </button>
+        <button class="qa-btn" onclick="window.location.href='wallet.html'">
+            💰 Wallet
+        </button>
+        <button class="qa-btn" onclick="window.location.href='error-logs.html'">
+            🐛 Error Logs
+        </button>
+    </div>
+
+    <!-- ============================================================
+         STATS
+         ============================================================ -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="label">Wallet Balance</div>
+            <div class="value green" id="walletBalance">$0.00</div>
+            <div class="sub-text">Available for withdrawal</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Total Earned</div>
+            <div class="value blue" id="totalEarned">$0.00</div>
+            <div class="sub-text">Lifetime earnings</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Completed Tasks</div>
+            <div class="value purple" id="completedTasks">0</div>
+            <div class="sub-text">Successfully finished</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Pending Tasks</div>
+            <div class="value orange" id="pendingTasks">0</div>
+            <div class="sub-text">Awaiting approval</div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         AVAILABLE TASKS
+         ============================================================ -->
+    <div class="section-header">
+        <div class="section-title">
+            🔥 Available Tasks
+            <span class="count" id="taskCount">(0)</span>
+        </div>
+        <div class="section-actions">
+            <button class="active" onclick="filterTasks('all')" id="filterAll">All</button>
+            <button onclick="filterTasks('app_testing')" id="filterAppTesting">App Testing</button>
+            <button onclick="filterTasks('content_writing')" id="filterContentWriting">Writing</button>
+            <button onclick="filterTasks('social_media')" id="filterSocialMedia">Social Media</button>
+        </div>
+    </div>
+    <div id="taskContainer">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <div>Loading tasks...</div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MY APPLICATIONS
+         ============================================================ -->
+    <div class="section-header" id="myApplications" style="margin-top:12px;">
+        <div class="section-title">
+            📋 My Applications
+            <span class="count" id="appCount">(0)</span>
+        </div>
+        <div class="section-actions">
+            <button onclick="fetchApplications()">🔄 Refresh</button>
+        </div>
+    </div>
+    <div id="applicationContainer">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <div>Loading applications...</div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         CREDIT
+         ============================================================ -->
+    <div class="credit">
+        Built by <span class="brand"><span>Rshiraz</span></span> 🇰🇪 &nbsp;|&nbsp; © 2026 Zurifex. All rights reserved.
+    </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT - FULL APPLICATION LOGIC
+     ============================================================ -->
+<script>
+    // ============================================================
+    // CONFIGURATION
+    // ============================================================
+    const API_URL = 'http://localhost:5000';
+    const LOG_KEY = 'zurifex_error_logs';
+    const user = window.ZURIFEX_USER || JSON.parse(localStorage.getItem('zurifex_user') || 'null');
+
+    let currentFilter = 'all';
+    let allTasks = [];
+    let allApplications = [];
+
+    // ============================================================
+    // ERROR LOGGING SYSTEM
+    // ============================================================
+    function logError(type, message, details = null) {
+        try {
+            const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+            logs.unshift({
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 8),
+                timestamp: new Date().toISOString(),
+                type: type,
+                message: message,
+                details: details,
+                user: user,
+                url: window.location.href
+            });
+            if (logs.length > 500) logs.pop();
+            localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+            console.error(`[${type.toUpperCase()}]`, message, details);
+        } catch (e) {}
+    }
+
+    // Override console.error
+    const origError = console.error;
+    console.error = function(...args) {
+        origError.apply(console, args);
+        try {
+            const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+            if (msg.includes('Error') || msg.includes('Failed') || msg.includes('exception') || msg.includes('undefined')) {
+                logError('frontend', msg, { args: args });
+            }
+        } catch (e) {}
+    };
+
+    window.onerror = function(message, source, lineno, colno, error) {
+        logError('frontend', message, { source, line: lineno, column: colno, stack: error?.stack });
+        return false;
+    };
+    window.onunhandledrejection = function(event) {
+        logError('frontend', 'Unhandled Promise Rejection', { reason: String(event.reason) });
+    };
+
+    // ============================================================
+    // DISPLAY USER INFO
+    // ============================================================
+    document.getElementById('userName').textContent = user?.full_name || 'Freelancer';
+    document.getElementById('welcomeName').textContent = user?.full_name || 'Freelancer';
+    document.getElementById('roleBadge').textContent = user?.role || 'Freelancer';
+
+    // Last login (from localStorage)
+    const lastLogin = localStorage.getItem('zurifex_last_login');
+    if (lastLogin) {
+        const date = new Date(lastLogin);
+        document.getElementById('lastLogin').textContent = `Last login: ${date.toLocaleString()}`;
+    }
+    localStorage.setItem('zurifex_last_login', new Date().toISOString());
+
+    // ============================================================
+    // NOTIFICATIONS SYSTEM
+    // ============================================================
+    function toggleNotifications() {
+        const dropdown = document.getElementById('notifDropdown');
+        dropdown.classList.toggle('show');
+    }
+
+    function addNotification(message) {
+        const list = document.getElementById('notifList');
+        const count = document.getElementById('notifCount');
+        const item = document.createElement('div');
+        item.className = 'notif-item';
+        item.innerHTML = `<div class="notif-msg">${message}</div><div class="time">Just now</div>`;
+        list.prepend(item);
+        const total = list.children.length;
+        count.textContent = total;
+    }
+
+    // Close notifications on click outside
+    document.addEventListener('click', function(e) {
+        const bell = document.querySelector('.notification-bell');
+        if (bell && !bell.contains(e.target)) {
+            document.getElementById('notifDropdown').classList.remove('show');
+        }
+    });
+
+    // ============================================================
+    // FETCH STATS
+    // ============================================================
+    async function fetchStats() {
+        try {
+            const res = await fetch(`${API_URL}/api/dashboard/freelancer/${user.id}`);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to fetch stats');
+            }
+            const data = await res.json();
+            const stats = data.stats || {};
+            document.getElementById('walletBalance').textContent = `$${(stats.wallet_balance || 0).toFixed(2)}`;
+            document.getElementById('totalEarned').textContent = `$${(stats.total_earned || 0).toFixed(2)}`;
+            document.getElementById('completedTasks').textContent = stats.completed_tasks || 0;
+            document.getElementById('pendingTasks').textContent = stats.pending_tasks || 0;
+        } catch (error) {
+            console.error('Stats error:', error);
+            logError('api', 'Failed to fetch stats', { error: error.message });
+        }
+    }
+
+    // ============================================================
+    // FETCH TASKS
+    // ============================================================
+    async function fetchTasks() {
+        const container = document.getElementById('taskContainer');
+        container.innerHTML = `<div class="loading-state"><div class="spinner"></div><div>Loading tasks...</div></div>`;
+
+        try {
+            const res = await fetch(`${API_URL}/api/tasks`);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to fetch tasks');
+            }
+            const data = await res.json();
+            allTasks = data.tasks || [];
+            document.getElementById('taskCount').textContent = `(${allTasks.length})`;
+            renderTasks();
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">❌</div>Failed to load tasks. Please refresh.<div class="sub">${error.message}</div></div>`;
+            logError('api', 'Failed to fetch tasks', { error: error.message });
+        }
+    }
+
+    // ============================================================
+    // RENDER TASKS WITH FILTER
+    // ============================================================
+    function renderTasks() {
+        const container = document.getElementById('taskContainer');
+        let filtered = allTasks;
+
+        if (currentFilter !== 'all') {
+            filtered = filtered.filter(t => t.category === currentFilter);
+        }
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">📭</div>No tasks available${currentFilter !== 'all' ? ' in this category' : ''}. Check back later!<div class="sub">New tasks are added daily</div></div>`;
+            return;
+        }
+
+        container.innerHTML = `<div class="task-grid">${filtered.map(task => `
+            <div class="task-card">
+                <div class="task-title">${escapeHtml(task.title)}</div>
+                <span class="task-category">${escapeHtml(task.category || 'General')}</span>
+                <div class="task-desc">${escapeHtml(task.description || 'No description provided')}</div>
+                <div class="task-meta">
+                    <span class="advertisor">By: ${escapeHtml(task.advertisor?.full_name || 'Unknown')}</span>
+                    <span class="budget">$${task.budget_per_completion}</span>
+                </div>
+                <div class="task-footer">
+                    <span class="progress">
+                        ${task.completed_count || 0}/${task.max_completions || 0} done
+                        <span class="bar"><span class="fill" style="width:${((task.completed_count || 0) / (task.max_completions || 1) * 100)}%"></span></span>
+                    </span>
+                    <button class="btn-apply" onclick="applyTask('${task.id}')">Apply Now</button>
+                </div>
+            </div>
+        `).join('')}</div>`;
+    }
+
+    // ============================================================
+    // FILTER TASKS
+    // ============================================================
+    function filterTasks(category) {
+        currentFilter = category;
+        document.querySelectorAll('.section-actions button').forEach(btn => btn.classList.remove('active'));
+        const btnMap = {
+            'all': 'filterAll',
+            'app_testing': 'filterAppTesting',
+            'content_writing': 'filterContentWriting',
+            'social_media': 'filterSocialMedia'
+        };
+        const activeBtn = document.getElementById(btnMap[category] || 'filterAll');
+        if (activeBtn) activeBtn.classList.add('active');
+        renderTasks();
+    }
+
+    // ============================================================
+    // APPLY TO TASK
+    // ============================================================
+    async function applyTask(taskId) {
+        const submissionText = prompt('Tell us why you\'re a good fit for this task:', 'I can complete this task efficiently and deliver quality results.');
+        if (!submissionText) return;
+
+        try {
+            const res = await fetch(`${API_URL}/api/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    task_id: taskId,
+                    freelancer_id: user.id,
+                    submission_text: submissionText
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('✅ Application submitted! The admin will review it.');
+                addNotification(`✅ Applied to task "${allTasks.find(t => t.id === taskId)?.title || 'task'}"`);
+                fetchTasks();
+                fetchApplications();
+            } else {
+                throw new Error(data.error || 'Failed to apply');
+            }
+        } catch (error) {
+            alert('❌ ' + error.message);
+            logError('api', 'Failed to apply to task', { taskId, error: error.message });
+        }
+    }
+
+    // ============================================================
+    // FETCH APPLICATIONS
+    // ============================================================
+    async function fetchApplications() {
+        const container = document.getElementById('applicationContainer');
+        container.innerHTML = `<div class="loading-state"><div class="spinner"></div><div>Loading applications...</div></div>`;
+
+        try {
+            const res = await fetch(`${API_URL}/api/completions/freelancer/${user.id}`);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to fetch applications');
+            }
+            const data = await res.json();
+            allApplications = data.completions || [];
+            document.getElementById('appCount').textContent = `(${allApplications.length})`;
+            renderApplications();
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">❌</div>Failed to load applications.<div class="sub">${error.message}</div></div>`;
+            logError('api', 'Failed to fetch applications', { error: error.message });
+        }
+    }
+
+    // ============================================================
+    // RENDER APPLICATIONS
+    // ============================================================
+    function renderApplications() {
+        const container = document.getElementById('applicationContainer');
+
+        if (allApplications.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">📋</div>You haven't applied to any tasks yet.<div class="sub">Browse available tasks and start earning!</div></div>`;
+            return;
+        }
+
+        container.innerHTML = allApplications.map(app => `
+            <div class="application-item">
+                <div class="app-info">
+                    <div class="app-title">${escapeHtml(app.task?.title || 'Unknown Task')}</div>
+                    <div class="app-status">Submitted: ${new Date(app.created_at).toLocaleDateString()} · Amount: $${app.amount_earned || 0}</div>
+                </div>
+                <span class="app-status-badge ${app.status}">${app.status}</span>
+            </div>
+        `).join('');
+    }
+
+    // ============================================================
+    // UTILITY: ESCAPE HTML
+    // ============================================================
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    function logout() {
+        localStorage.removeItem('zurifex_user');
+        localStorage.removeItem('zurifex_token');
+        window.location.href = 'login.html';
+    }
+
+    // ============================================================
+    // INITIALIZE
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchStats();
+        fetchTasks();
+        fetchApplications();
+
+        // Refresh every 30 seconds
+        setInterval(() => {
+            fetchStats();
+            fetchTasks();
+            fetchApplications();
+        }, 30000);
+
+        // Auto-hide notifications after 5s
+        setTimeout(() => {
+            document.getElementById('notifDropdown').classList.remove('show');
+        }, 5000);
+    });
+
+    // Expose functions globally for inline onclick
+    window.filterTasks = filterTasks;
+    window.applyTask = applyTask;
+    window.toggleNotifications = toggleNotifications;
+    window.logout = logout;
+    window.fetchApplications = fetchApplications;
+</script>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Zurifex 🇰🇪</title>
+    <style>
+        /* ========== RESET ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* ========== ANIMATED BACKGROUND ========== */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.7), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        .bg-canvas::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .glow-orb:nth-child(1) {
+            width: 400px;
+            height: 400px;
+            top: -100px;
+            right: -50px;
+            background: #1a3a8a;
+        }
+        .glow-orb:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            bottom: -100px;
+            left: -50px;
+            background: #7a1a5a;
+        }
+
+        /* ========== LOGIN CARD ========== */
+        .login-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(16, 16, 40, 0.8);
+            backdrop-filter: blur(30px);
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 440px;
+            max-width: 92%;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+            text-align: center;
+        }
+        .login-card .logo {
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 4px;
+        }
+        .login-card .logo .emoji {
+            -webkit-text-fill-color: initial;
+            color: #fff;
+        }
+        .login-card .logo .brand {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-card .subtitle {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 24px 0;
+        }
+
+        /* ========== GOOGLE BUTTON ========== */
+        .google-btn-wrapper {
+            display: flex;
+            justify-content: center;
+            min-height: 56px;
+        }
+        .g_id_signin {
+            display: flex;
+            justify-content: center;
+        }
+        #g_id_onload {
+            display: none;
+        }
+
+        /* ========== STATUS MESSAGES ========== */
+        .loading {
+            display: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            margin-top: 16px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .loading .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-msg {
+            display: none;
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.08);
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-top: 16px;
+            font-size: 14px;
+            border: 1px solid rgba(248, 113, 113, 0.15);
+            text-align: left;
+        }
+        .error-msg.show {
+            display: block;
+        }
+
+        .success-msg {
+            display: none;
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.08);
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-top: 16px;
+            font-size: 14px;
+            border: 1px solid rgba(74, 222, 128, 0.15);
+            text-align: left;
+        }
+        .success-msg.show {
+            display: block;
+        }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.2);
+        }
+        .footer .credit {
+            color: rgba(255, 255, 255, 0.3);
+            font-weight: 500;
+        }
+        .footer .credit span {
+            color: #60a5fa;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 32px 24px;
+            }
+            .login-card .logo {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-canvas">
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+</div>
+
+<!-- Login Card -->
+<div class="login-card">
+    <div class="logo">
+        <span class="emoji">🇰🇪</span>
+        <span class="brand">Zurifex</span>
+    </div>
+    <p class="subtitle">Sign in to start earning or posting tasks</p>
+
+    <hr class="divider">
+
+    <!-- Google Sign-In Button -->
+    <div id="g_id_onload"
+         data-client_id="297987471593-iuq5j3t8ka800vtnp8a3vj6ifnjl9144.apps.googleusercontent.com"
+         data-callback="handleGoogleSignIn"
+         data-auto_prompt="false">
+    </div>
+    <div class="google-btn-wrapper">
+        <div class="g_id_signin"
+             data-type="standard"
+             data-size="large"
+             data-theme="outline"
+             data-text="sign_in_with"
+             data-shape="rectangular"
+             data-logo_alignment="left"
+             data-width="340">
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <span class="spinner"></span> Signing you in...
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg">✅ Sign in successful! Redirecting...</div>
+
+    <hr class="divider">
+
+    <div class="footer">
+        By signing in, you agree to our Terms of Service
+        <br>
+        Built by <span class="credit"><span>Rshiraz</span></span> 🇰🇪
+    </div>
+</div>
+
+<!-- Google Library -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+    // ============================================
+    // CONFIGURATION
+    // ============================================
+    const API_URL = 'http://localhost:5000';
+    const LOG_KEY = 'zurifex_error_logs';
+
+    // ============================================
+    // ERROR LOGGING SYSTEM
+    // ============================================
+    function logError(type, message, details = null) {
+        try {
+            const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+            logs.unshift({
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                timestamp: new Date().toISOString(),
+                type: type,
+                message: message,
+                details: details,
+                user: JSON.parse(localStorage.getItem('zurifex_user') || 'null'),
+                url: window.location.href
+            });
+            if (logs.length > 500) logs.pop();
+            localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+            console.error(`[${type.toUpperCase()}]`, message, details);
+        } catch (e) {
+            console.error('Error logging system failed:', e);
+        }
+    }
+
+    // ============================================
+    // GOOGLE SIGN-IN HANDLER
+    // ============================================
+    async function handleGoogleSignIn(response) {
+        const loading = document.getElementById('loading');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+
+        // Reset UI
+        loading.classList.remove('show');
+        errorMsg.classList.remove('show');
+        successMsg.classList.remove('show');
+
+        try {
+            // Validate response
+            if (!response || !response.credential) {
+                throw new Error('No credential received from Google');
+            }
+
+            const idToken = response.credential;
+
+            // Show loading
+            loading.classList.add('show');
+
+            // Send token to backend
+            const res = await fetch(`${API_URL}/api/auth/google`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ idToken })
+            });
+
+            // Parse response
+            let data;
+            try {
+                data = await res.json();
+            } catch (e) {
+                throw new Error('Invalid response from server');
+            }
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Authentication failed');
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Login failed');
+            }
+
+            if (!data.user) {
+                throw new Error('No user data received');
+            }
+
+            // Save user data
+            localStorage.setItem('zurifex_user', JSON.stringify(data.user));
+            localStorage.setItem('zurifex_token', idToken);
+
+            // Show success
+            loading.classList.remove('show');
+            successMsg.classList.add('show');
+
+            // Log success
+            console.log('✅ Login successful:', data.user.email);
+
+            // Redirect after delay
+            setTimeout(() => {
+                const user = data.user;
+                
+                // Check if user has completed profile setup
+                const hasCompletedProfile = user.phone || user.location || user.bio;
+                
+                if (!hasCompletedProfile) {
+                    // User hasn't set up profile yet
+                    window.location.href = 'setup-profile.html';
+                } else if (user.role === 'admin') {
+                    window.location.href = 'admin-panel.html';
+                } else if (user.role === 'advertisor') {
+                    window.location.href = 'dashboard-advertisor.html';
+                } else {
+                    window.location.href = 'dashboard-freelancer.html';
+                }
+            }, 1500);
+
+        } catch (error) {
+            // Hide loading
+            loading.classList.remove('show');
+            
+            // Show error
+            errorMsg.textContent = '❌ ' + (error.message || 'Something went wrong');
+            errorMsg.classList.add('show');
+            
+            // Log error
+            logError('auth', error.message, {
+                stack: error.stack,
+                timestamp: new Date().toISOString()
+            });
+            
+            console.error('Login error:', error);
+        }
+    }
+
+    // ============================================
+    // CHECK EXISTING SESSION
+    // ============================================
+    function checkExistingSession() {
+        try {
+            const userData = localStorage.getItem('zurifex_user');
+            if (!userData) return;
+
+            const user = JSON.parse(userData);
+            
+            // Validate user object
+            if (!user || !user.id || !user.email) {
+                localStorage.removeItem('zurifex_user');
+                localStorage.removeItem('zurifex_token');
+                return;
+            }
+
+            // Check if profile is complete
+            const hasCompletedProfile = user.phone || user.location || user.bio;
+            const currentPage = window.location.pathname;
+
+            // If on login page and user exists, redirect
+            if (currentPage.includes('login.html') || currentPage === '/' || currentPage === '') {
+                if (!hasCompletedProfile) {
+                    window.location.href = 'setup-profile.html';
+                } else if (user.role === 'admin') {
+                    window.location.href = 'admin-panel.html';
+                } else if (user.role === 'advertisor') {
+                    window.location.href = 'dashboard-advertisor.html';
+                } else {
+                    window.location.href = 'dashboard-freelancer.html';
+                }
+            }
+        } catch (e) {
+            // Invalid data, clear it
+            localStorage.removeItem('zurifex_user');
+            localStorage.removeItem('zurifex_token');
+            console.warn('Cleared invalid session data');
+        }
+    }
+
+    // ============================================
+    // OVERRIDE CONSOLE.ERROR FOR AUTO-LOGGING
+    // ============================================
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+        originalConsoleError.apply(console, args);
+        try {
+            const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+            if (msg.includes('Error') || msg.includes('Failed') || msg.includes('404') || msg.includes('500') || msg.includes('exception')) {
+                logError('frontend', msg, { args: args });
+            }
+        } catch (e) {
+            // Ignore logging errors
+        }
+    };
+
+    // ============================================
+    // CATCH UNHANDLED ERRORS
+    // ============================================
+    window.onerror = function(message, source, lineno, colno, error) {
+        logError('frontend', message, {
+            source: source,
+            line: lineno,
+            column: colno,
+            stack: error ? error.stack : null
+        });
+        return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+        logError('frontend', 'Unhandled Promise Rejection', {
+            reason: event.reason ? String(event.reason) : 'Unknown reason'
+        });
+    };
+
+    // ============================================
+    // OVERRIDE FETCH FOR ERROR LOGGING
+    // ============================================
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        return originalFetch.apply(this, args)
+            .catch(error => {
+                logError('api', `Fetch error: ${error.message}`, {
+                    url: args[0],
+                    options: args[1] || null
+                });
+                throw error;
+            });
+    };
+
+    // ============================================
+    // DOM READY - CHECK SESSION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', checkExistingSession);
+</script>
+
+</body>
+</html>

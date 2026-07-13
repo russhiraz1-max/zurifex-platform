@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Logs - Zurifex 🇰🇪</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        nav {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 40px;
+            background: rgba(10, 10, 30, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo span {
+            -webkit-text-fill-color: initial;
+            color: #fff;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .nav-right .user-info {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+        }
+        .nav-right .user-info strong {
+            color: #fff;
+        }
+        .btn-logout {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .btn-clear {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-clear:hover { background: rgba(248, 113, 113, 0.2); }
+        .dashboard {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 40px 60px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header h1 span {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .count {
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
+        }
+        .header .count strong { color: #f87171; }
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filters select, .filters input {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .filters select option { background: #1a1a2e; }
+        .filters select:focus, .filters input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+        .log-table {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+        .log-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .log-table th {
+            text-align: left;
+            padding: 14px 20px;
+            background: rgba(0,0,0,0.2);
+            color: rgba(255,255,255,0.5);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .log-table td {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            vertical-align: top;
+        }
+        .log-table tr:hover { background: rgba(255,255,255,0.02); }
+        .log-table .type-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .type-badge.auth { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .type-badge.database { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .type-badge.api { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+        .type-badge.frontend { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+        .type-badge.server { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+        .log-table .error-msg {
+            color: #f87171;
+            font-family: monospace;
+            font-size: 13px;
+            word-break: break-word;
+            max-width: 400px;
+        }
+        .log-table .timestamp {
+            color: rgba(255,255,255,0.3);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .log-table .user-info {
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.3);
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stats-row .stat-box {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 14px 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+        .stats-row .stat-box .num {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .stats-row .stat-box .label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            margin-top: 2px;
+        }
+        .stats-row .stat-box .num.red { color: #f87171; }
+        .stats-row .stat-box .num.blue { color: #60a5fa; }
+        .stats-row .stat-box .num.orange { color: #fb923c; }
+        .stats-row .stat-box .num.green { color: #4ade80; }
+        .credit {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.15);
+            font-size: 13px;
+        }
+        .credit .brand { color: #60a5fa; }
+        @media (max-width: 768px) {
+            nav { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+            .dashboard { padding: 16px; }
+            .log-table { overflow-x: auto; }
+            .log-table table { font-size: 12px; }
+            .log-table th, .log-table td { padding: 10px 14px; }
+            .header h1 { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-canvas"></div>
+
+<nav>
+    <div class="logo"><span>🇰🇪</span>Zurifex</div>
+    <div class="nav-right">
+        <span class="user-info">👋 <strong id="userName">Admin</strong></span>
+        <button class="btn-clear" onclick="clearErrors()">🗑️ Clear All</button>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+</nav>
+
+<div class="dashboard">
+    <div class="header">
+        <div>
+            <h1>🐛 Error <span>Logs</span></h1>
+            <div class="count">Total: <strong id="totalCount">0</strong> errors</div>
+        </div>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+        <div class="stat-box"><div class="num red" id="statAuth">0</div><div class="label">Auth</div></div>
+        <div class="stat-box"><div class="num blue" id="statDatabase">0</div><div class="label">Database</div></div>
+        <div class="stat-box"><div class="num orange" id="statApi">0</div><div class="label">API</div></div>
+        <div class="stat-box"><div class="num green" id="statFrontend">0</div><div class="label">Frontend</div></div>
+        <div class="stat-box"><div class="num red" id="statServer">0</div><div class="label">Server</div></div>
+    </div>
+
+    <div class="filters">
+        <select id="filterType" onchange="renderLogs()">
+            <option value="all">All Types</option>
+            <option value="auth">Auth</option>
+            <option value="database">Database</option>
+            <option value="api">API</option>
+            <option value="frontend">Frontend</option>
+            <option value="server">Server</option>
+        </select>
+        <input type="text" id="filterSearch" placeholder="Search errors..." oninput="renderLogs()">
+    </div>
+
+    <div class="log-table" id="logContainer">
+        <div class="empty-state">
+            <div class="icon">✅</div>
+            No errors logged yet. Everything is clean!
+        </div>
+    </div>
+
+    <div class="credit">
+        Built by <span class="brand">Rshiraz</span> 🇰🇪 &nbsp;|&nbsp; © 2026 Zurifex
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // SECURITY CHECK
+    // ============================================
+    const user = JSON.parse(localStorage.getItem('zurifex_user') || 'null');
+    if (!user) {
+        window.location.href = 'login.html';
+    }
+    if (user.role !== 'admin') {
+        alert('Access denied. Admin only.');
+        window.location.href = 'dashboard-freelancer.html';
+    }
+
+    document.getElementById('userName').textContent = user.full_name || 'Admin';
+
+    // ============================================
+    // ERROR LOGGING SYSTEM (FIXED - No recursion)
+    // ============================================
+    const LOG_KEY = 'zurifex_error_logs';
+    let isLoggingError = false;
+
+    function logError(type, message, details = null) {
+        if (isLoggingError) return;
+        isLoggingError = true;
+        
+        try {
+            const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+            logs.unshift({
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 8),
+                timestamp: new Date().toISOString(),
+                type: type,
+                message: message,
+                details: details,
+                user: JSON.parse(localStorage.getItem('zurifex_user') || 'null'),
+                url: window.location.href
+            });
+            if (logs.length > 500) logs.pop();
+            localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+            if (window._origConsoleError) {
+                window._origConsoleError(`[${type.toUpperCase()}]`, message, details);
+            }
+        } catch (e) {}
+        isLoggingError = false;
+    }
+
+    if (!window._origConsoleError) {
+        window._origConsoleError = console.error;
+    }
+
+    console.error = function(...args) {
+        if (window._origConsoleError) {
+            window._origConsoleError.apply(console, args);
+        }
+        try {
+            const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+            if (msg.includes('Error') || msg.includes('Failed') || msg.includes('exception')) {
+                logError('frontend', msg, { args: args });
+            }
+        } catch (e) {}
+    };
+
+    window.onerror = function(message, source, lineno, colno, error) {
+        logError('frontend', message, { source, line: lineno, column: colno, stack: error?.stack });
+        return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+        logError('frontend', 'Unhandled Promise Rejection', { reason: String(event.reason) });
+    };
+
+    // ============================================
+    // GET LOGS
+    // ============================================
+    function getLogs() {
+        try {
+            const data = localStorage.getItem(LOG_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    // ============================================
+    // CLEAR ALL ERRORS
+    // ============================================
+    function clearErrors() {
+        if (confirm('⚠️ Delete all error logs?')) {
+            localStorage.setItem(LOG_KEY, JSON.stringify([]));
+            renderLogs();
+        }
+    }
+
+    // ============================================
+    // RENDER LOGS
+    // ============================================
+    function renderLogs() {
+        const logs = getLogs();
+        const filterType = document.getElementById('filterType').value;
+        const filterSearch = document.getElementById('filterSearch').value.toLowerCase();
+
+        let filtered = logs;
+
+        if (filterType !== 'all') {
+            filtered = filtered.filter(l => l.type === filterType);
+        }
+
+        if (filterSearch) {
+            filtered = filtered.filter(l =>
+                l.message.toLowerCase().includes(filterSearch) ||
+                (l.details && JSON.stringify(l.details).toLowerCase().includes(filterSearch))
+            );
+        }
+
+        const stats = { auth: 0, database: 0, api: 0, frontend: 0, server: 0 };
+        logs.forEach(l => {
+            if (stats.hasOwnProperty(l.type)) stats[l.type]++;
+        });
+        document.getElementById('statAuth').textContent = stats.auth;
+        document.getElementById('statDatabase').textContent = stats.database;
+        document.getElementById('statApi').textContent = stats.api;
+        document.getElementById('statFrontend').textContent = stats.frontend;
+        document.getElementById('statServer').textContent = stats.server;
+        document.getElementById('totalCount').textContent = logs.length;
+
+        const container = document.getElementById('logContainer');
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">${logs.length === 0 ? '✅' : '🔍'}</div>
+                    ${logs.length === 0 ? 'No errors logged yet. Everything is clean!' : 'No errors match your filters.'}
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Error</th>
+                        <th>User</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        filtered.forEach(log => {
+            const time = new Date(log.timestamp).toLocaleString();
+            const typeClass = log.type;
+            const userInfo = log.user ? `${log.user.full_name || 'User'} (${log.user.email || 'No email'})` : 'Unknown';
+            const details = log.details ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : '—';
+            const shortDetails = details.length > 80 ? details.substring(0, 80) + '...' : details;
+
+            html += `
+                <tr>
+                    <td class="timestamp">${time}</td>
+                    <td><span class="type-badge ${typeClass}">${log.type}</span></td>
+                    <td class="error-msg">${escapeHtml(log.message)}</td>
+                    <td class="user-info">${escapeHtml(userInfo)}</td>
+                    <td class="user-info" title="${escapeHtml(details)}">${escapeHtml(shortDetails)}</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    // ============================================
+    // UTILITY
+    // ============================================
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function logout() {
+        localStorage.removeItem('zurifex_user');
+        localStorage.removeItem('zurifex_token');
+        window.location.href = 'login.html';
+    }
+
+    // ============================================
+    // LOAD
+    // ============================================
+    document.addEventListener('DOMContentLoaded', renderLogs);
+</script>
+</body>
+</html>

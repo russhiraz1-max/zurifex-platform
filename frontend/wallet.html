@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet - Zurifex 🇰🇪</title>
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+
+        /* ============================================================
+           BACKGROUND
+           ============================================================ */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        .bg-canvas::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .glow-orb:nth-child(1) {
+            width: 500px;
+            height: 500px;
+            top: -200px;
+            right: -100px;
+            background: #1a3a8a;
+        }
+        .glow-orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            bottom: -150px;
+            left: -100px;
+            background: #7a1a5a;
+        }
+        .glow-orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(26, 58, 138, 0.15);
+        }
+
+        /* ============================================================
+           NAVBAR
+           ============================================================ */
+        nav {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 40px;
+            background: rgba(10, 10, 30, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo span {
+            -webkit-text-fill-color: initial;
+            color: #fff;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-back {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-back:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .btn-logout {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .btn-primary {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* ============================================================
+           DASHBOARD LAYOUT
+           ============================================================ */
+        .dashboard {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 40px 60px;
+        }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .page-header h1 {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .page-header h1 span {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .page-header .sub {
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
+            margin-top: 2px;
+        }
+
+        /* ============================================================
+           STATS CARDS
+           ============================================================ */
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .wallet-card {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s;
+        }
+        .wallet-card:hover {
+            border-color: rgba(255,255,255,0.1);
+        }
+        .wallet-card .label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .wallet-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .wallet-card .value.green { color: #4ade80; }
+        .wallet-card .value.blue { color: #60a5fa; }
+        .wallet-card .value.purple { color: #a78bfa; }
+        .wallet-card .value.orange { color: #fb923c; }
+        .wallet-card .change {
+            font-size: 13px;
+            margin-top: 6px;
+        }
+        .wallet-card .change.up { color: #4ade80; }
+        .wallet-card .change.down { color: #f87171; }
+
+        /* ============================================================
+           CHART PLACEHOLDER
+           ============================================================ */
+        .chart-container {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 28px;
+        }
+        .chart-container h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 120px;
+            padding-top: 10px;
+        }
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+            border-radius: 4px 4px 0 0;
+            min-height: 10px;
+            transition: height 0.6s ease;
+            position: relative;
+        }
+        .chart-bar .bar-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: rgba(255,255,255,0.2);
+            white-space: nowrap;
+        }
+
+        /* ============================================================
+           TRANSACTION LIST
+           ============================================================ */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .section-header .count {
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+            font-weight: 400;
+        }
+        .section-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .section-actions select,
+        .section-actions input {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .section-actions select:focus,
+        .section-actions input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+        .transaction-list {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: 0.2s;
+        }
+        .transaction-item:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+        .transaction-item .left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .transaction-item .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            background: rgba(255,255,255,0.04);
+        }
+        .transaction-item .info .title {
+            font-weight: 500;
+            font-size: 15px;
+        }
+        .transaction-item .info .date {
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+        }
+        .transaction-item .right {
+            text-align: right;
+        }
+        .transaction-item .right .amount {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .transaction-item .right .amount.positive { color: #4ade80; }
+        .transaction-item .right .amount.negative { color: #f87171; }
+        .transaction-item .right .status {
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+        }
+        .transaction-item .right .status.pending { color: #fb923c; }
+        .transaction-item .right .status.completed { color: #4ade80; }
+        .transaction-item .right .status.failed { color: #f87171; }
+
+        /* ============================================================
+           PAGINATION
+           ============================================================ */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 0 8px;
+        }
+        .pagination button {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(20, 20, 50, 0.5);
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .pagination button:hover {
+            background: rgba(30, 30, 70, 0.5);
+            color: #fff;
+        }
+        .pagination button.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        /* ============================================================
+           EMPTY / LOADING
+           ============================================================ */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: rgba(255,255,255,0.3);
+        }
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .loading-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255,255,255,0.3);
+        }
+        .loading-state .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,0.05);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           CREDIT FOOTER
+           ============================================================ */
+        .credit {
+            text-align: center;
+            padding: 24px 20px 12px;
+            color: rgba(255,255,255,0.1);
+            font-size: 13px;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            margin-top: 28px;
+        }
+        .credit .brand {
+            color: rgba(255,255,255,0.3);
+            font-weight: 500;
+        }
+        .credit .brand span {
+            color: #60a5fa;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .wallet-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 16px;
+            }
+            .dashboard {
+                padding: 16px;
+            }
+            .wallet-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .wallet-card .value {
+                font-size: 22px;
+            }
+            .page-header h1 {
+                font-size: 24px;
+            }
+            .transaction-item {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 12px 16px;
+            }
+            .section-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .section-actions {
+                justify-content: stretch;
+            }
+            .section-actions select,
+            .section-actions input {
+                flex: 1;
+            }
+        }
+        @media (max-width: 480px) {
+            .wallet-grid {
+                grid-template-columns: 1fr;
+            }
+            nav {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .nav-right {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-canvas">
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+</div>
+
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
+<nav>
+    <div class="logo"><span>🇰🇪</span>Zurifex</div>
+    <div class="nav-right">
+        <a href="dashboard-freelancer.html" class="btn-back">← Dashboard</a>
+        <a href="withdraw.html" class="btn-primary">💸 Withdraw</a>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+</nav>
+
+<!-- ============================================================
+     DASHBOARD
+     ============================================================ -->
+<div class="dashboard">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1>💰 My <span>Wallet</span></h1>
+            <div class="sub">Track your earnings, transactions, and withdrawal history.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn-primary" onclick="refreshData()">🔄 Refresh</button>
+            <button class="btn-primary" onclick="window.location.href='withdraw.html'">💸 Withdraw</button>
+        </div>
+    </div>
+
+    <!-- Wallet Stats -->
+    <div class="wallet-grid" id="walletStats">
+        <div class="wallet-card">
+            <div class="label">Available Balance</div>
+            <div class="value green" id="availableBalance">$0.00</div>
+            <div class="change up">↑ +0% this month</div>
+        </div>
+        <div class="wallet-card">
+            <div class="label">Total Earned</div>
+            <div class="value blue" id="totalEarned">$0.00</div>
+            <div class="change up">↑ lifetime</div>
+        </div>
+        <div class="wallet-card">
+            <div class="label">Total Withdrawn</div>
+            <div class="value purple" id="totalWithdrawn">$0.00</div>
+            <div class="change down">↓ 0%</div>
+        </div>
+        <div class="wallet-card">
+            <div class="label">Pending Withdrawals</div>
+            <div class="value orange" id="pendingWithdrawals">0</div>
+            <div class="change">awaiting processing</div>
+        </div>
+    </div>
+
+    <!-- Chart (dummy) -->
+    <div class="chart-container">
+        <h3>📈 Earnings Overview (Last 7 Days)</h3>
+        <div class="chart-bars" id="chartBars">
+            <div class="chart-bar" style="height:40%;"><span class="bar-label">Mon</span></div>
+            <div class="chart-bar" style="height:60%;"><span class="bar-label">Tue</span></div>
+            <div class="chart-bar" style="height:80%;"><span class="bar-label">Wed</span></div>
+            <div class="chart-bar" style="height:45%;"><span class="bar-label">Thu</span></div>
+            <div class="chart-bar" style="height:95%;"><span class="bar-label">Fri</span></div>
+            <div class="chart-bar" style="height:30%;"><span class="bar-label">Sat</span></div>
+            <div class="chart-bar" style="height:70%;"><span class="bar-label">Sun</span></div>
+        </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="section-header">
+        <h2>📋 Transaction History <span class="count" id="txnCount">(0)</span></h2>
+        <div class="section-actions">
+            <select id="txnFilter" onchange="filterTransactions()">
+                <option value="all">All Types</option>
+                <option value="deposit">Deposit</option>
+                <option value="task_payment">Task Payment</option>
+                <option value="withdrawal">Withdrawal</option>
+                <option value="commission">Commission</option>
+            </select>
+            <select id="txnStatus" onchange="filterTransactions()">
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+            </select>
+            <input type="text" id="txnSearch" placeholder="Search..." oninput="filterTransactions()">
+        </div>
+    </div>
+
+    <div class="transaction-list" id="transactionContainer">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <div>Loading transactions...</div>
+        </div>
+    </div>
+
+    <!-- Pagination (dummy) -->
+    <div class="pagination">
+        <button class="active">1</button>
+        <button>2</button>
+        <button>3</button>
+        <button>Next →</button>
+    </div>
+
+    <!-- Credit -->
+    <div class="credit">
+        Built by <span class="brand"><span>Rshiraz</span></span> 🇰🇪 &nbsp;|&nbsp; © 2026 Zurifex. All rights reserved.
+    </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+    const API_URL = 'http://localhost:5000';
+    const user = JSON.parse(localStorage.getItem('zurifex_user') || 'null');
+    if (!user) window.location.href = 'login.html';
+
+    let allTransactions = [];
+    let filteredTransactions = [];
+
+    // ============================================================
+    // FETCH WALLET DATA
+    // ============================================================
+    async function fetchWallet() {
+        try {
+            const res = await fetch(`${API_URL}/api/users/${user.id}`);
+            if (!res.ok) throw new Error('Failed to fetch user');
+            const data = await res.json();
+            const u = data.user;
+            document.getElementById('availableBalance').textContent = '$' + (u.wallet_balance || 0).toFixed(2);
+            document.getElementById('totalEarned').textContent = '$' + (u.total_earned || 0).toFixed(2);
+            document.getElementById('totalWithdrawn').textContent = '$' + (u.total_withdrawn || 0).toFixed(2);
+            // Pending withdrawals count (mock)
+            const pendingRes = await fetch(`${API_URL}/api/withdrawals/user/${user.id}`);
+            if (pendingRes.ok) {
+                const pendingData = await pendingRes.json();
+                const pendings = pendingData.withdrawals.filter(w => w.status === 'pending');
+                document.getElementById('pendingWithdrawals').textContent = pendings.length;
+            }
+        } catch (error) {
+            console.error('Wallet error:', error);
+        }
+    }
+
+    // ============================================================
+    // FETCH TRANSACTIONS
+    // ============================================================
+    async function fetchTransactions() {
+        const container = document.getElementById('transactionContainer');
+        container.innerHTML = `<div class="loading-state"><div class="spinner"></div><div>Loading transactions...</div></div>`;
+
+        try {
+            const res = await fetch(`${API_URL}/api/transactions/user/${user.id}`);
+            if (!res.ok) throw new Error('Failed to fetch transactions');
+            const data = await res.json();
+            allTransactions = data.transactions || [];
+            document.getElementById('txnCount').textContent = `(${allTransactions.length})`;
+            filterTransactions();
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">❌</div>Failed to load transactions.<div class="sub">${error.message}</div></div>`;
+        }
+    }
+
+    // ============================================================
+    // FILTER TRANSACTIONS
+    // ============================================================
+    function filterTransactions() {
+        const typeFilter = document.getElementById('txnFilter').value;
+        const statusFilter = document.getElementById('txnStatus').value;
+        const searchQuery = document.getElementById('txnSearch').value.toLowerCase();
+
+        filteredTransactions = allTransactions.filter(t => {
+            let match = true;
+            if (typeFilter !== 'all' && t.type !== typeFilter) match = false;
+            if (statusFilter !== 'all' && t.status !== statusFilter) match = false;
+            if (searchQuery && !t.description.toLowerCase().includes(searchQuery)) match = false;
+            return match;
+        });
+
+        renderTransactions();
+    }
+
+    // ============================================================
+    // RENDER TRANSACTIONS
+    // ============================================================
+    function renderTransactions() {
+        const container = document.getElementById('transactionContainer');
+        if (filteredTransactions.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">📭</div>No transactions match your filters.</div>`;
+            return;
+        }
+
+        container.innerHTML = filteredTransactions.map(t => {
+            const isPositive = t.amount >= 0;
+            const icon = isPositive ? '📈' : '📉';
+            const statusClass = t.status || 'pending';
+            const amountClass = isPositive ? 'positive' : 'negative';
+
+            return `
+                <div class="transaction-item">
+                    <div class="left">
+                        <div class="icon">${icon}</div>
+                        <div class="info">
+                            <div class="title">${t.description || t.type}</div>
+                            <div class="date">${new Date(t.created_at).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="right">
+                        <div class="amount ${amountClass}">${isPositive ? '+' : '-'}$${Math.abs(t.amount).toFixed(2)}</div>
+                        <span class="status ${statusClass}">${statusClass}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ============================================================
+    // REFRESH
+    // ============================================================
+    function refreshData() {
+        fetchWallet();
+        fetchTransactions();
+    }
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    function logout() {
+        localStorage.removeItem('zurifex_user');
+        localStorage.removeItem('zurifex_token');
+        window.location.href = 'login.html';
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchWallet();
+        fetchTransactions();
+
+        // Auto-refresh every 30s
+        setInterval(() => {
+            fetchWallet();
+            fetchTransactions();
+        }, 30000);
+    });
+</script>
+</body>
+</html>

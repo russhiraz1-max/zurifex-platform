@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Zurifex 🇰🇪</title>
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        a { text-decoration: none; color: inherit; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.5); }
+
+        /* ============================================================
+           BACKGROUND
+           ============================================================ */
+        .bg-canvas {
+            position: fixed; inset: 0; z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        .bg-canvas::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: 0.3; pointer-events: none;
+        }
+        .glow-orb {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; pointer-events: none;
+        }
+        .glow-orb:nth-child(1) { width: 500px; height: 500px; top: -200px; right: -100px; background: #1a3a8a; }
+        .glow-orb:nth-child(2) { width: 400px; height: 400px; bottom: -150px; left: -100px; background: #7a1a5a; }
+        .glow-orb:nth-child(3) { width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(26,58,138,0.15); }
+
+        /* ============================================================
+           NAVBAR
+           ============================================================ */
+        nav {
+            position: relative; z-index: 10; display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 40px; background: rgba(10,10,30,0.85); backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; gap: 12px;
+        }
+        .logo { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo span { -webkit-text-fill-color: initial; color: #fff; }
+        .nav-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .btn-back {
+            padding: 8px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+            background: transparent; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 13px; transition: 0.3s;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .btn-logout {
+            padding: 8px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+            background: transparent; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 13px; transition: 0.3s;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+        /* ============================================================
+           DASHBOARD
+           ============================================================ */
+        .dashboard { position: relative; z-index: 10; max-width: 1000px; margin: 0 auto; padding: 28px 40px 60px; }
+
+        /* ============================================================
+           PROFILE HEADER
+           ============================================================ */
+        .profile-header {
+            display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+            background: rgba(20,20,50,0.5); backdrop-filter: blur(10px); border-radius: 16px;
+            padding: 28px 32px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 28px;
+        }
+        .profile-avatar {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: #fff;
+            flex-shrink: 0;
+        }
+        .profile-info h1 { font-size: 26px; font-weight: 700; }
+        .profile-info .email { color: rgba(255,255,255,0.4); font-size: 14px; }
+        .profile-info .role-badge {
+            display: inline-block; padding: 4px 14px; border-radius: 12px; font-size: 12px; font-weight: 600;
+            background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.15); margin-top: 6px;
+        }
+
+        /* ============================================================
+           TABS
+           ============================================================ */
+        .tabs {
+            display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap;
+            background: rgba(20,20,50,0.3); border-radius: 12px; padding: 4px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .tab-btn {
+            padding: 10px 24px; border-radius: 10px; border: none; background: transparent;
+            color: rgba(255,255,255,0.5); cursor: pointer; font-size: 14px; font-weight: 500; transition: 0.3s;
+        }
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.04); }
+        .tab-btn.active { background: rgba(59, 130, 246, 0.2); color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ============================================================
+           FORMS
+           ============================================================ */
+        .card {
+            background: rgba(20,20,50,0.5); backdrop-filter: blur(10px); border-radius: 16px;
+            padding: 28px 32px; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .card h2 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+        .card .sub { color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 24px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.7); margin-bottom: 4px;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3); color: #fff; font-size: 15px; font-family: inherit;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none; border-color: rgba(59, 130, 246, 0.4);
+        }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .form-group .helper { font-size: 12px; color: rgba(255,255,255,0.2); margin-top: 4px; }
+        .btn-save {
+            padding: 12px 32px; border-radius: 10px; border: none;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff; font-weight: 600; font-size: 16px;
+            cursor: pointer; transition: 0.3s;
+        }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3); }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger {
+            padding: 12px 32px; border-radius: 10px; border: 1px solid rgba(248,113,113,0.3);
+            background: rgba(248,113,113,0.1); color: #f87171; font-weight: 600; font-size: 16px;
+            cursor: pointer; transition: 0.3s;
+        }
+        .btn-danger:hover { background: rgba(248,113,113,0.2); }
+        .msg {
+            display: none; padding: 12px 16px; border-radius: 10px; margin-top: 12px;
+        }
+        .msg.success { display: block; color: #4ade80; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.15); }
+        .msg.error { display: block; color: #f87171; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.15); }
+
+        /* ============================================================
+           SETTINGS LIST
+           ============================================================ */
+        .setting-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-item .left .title { font-weight: 500; }
+        .setting-item .left .desc { font-size: 13px; color: rgba(255,255,255,0.3); }
+        .toggle {
+            width: 48px; height: 26px; background: rgba(255,255,255,0.1); border-radius: 13px;
+            cursor: pointer; transition: 0.3s; position: relative;
+        }
+        .toggle.active { background: #3b82f6; }
+        .toggle .thumb {
+            width: 20px; height: 20px; background: #fff; border-radius: 50%; position: absolute;
+            top: 3px; left: 3px; transition: 0.3s;
+        }
+        .toggle.active .thumb { left: 25px; }
+
+        /* ============================================================
+           CREDIT
+           ============================================================ */
+        .credit {
+            text-align: center; padding: 24px 20px 12px; color: rgba(255,255,255,0.1); font-size: 13px;
+            border-top: 1px solid rgba(255,255,255,0.03); margin-top: 28px;
+        }
+        .credit .brand { color: rgba(255,255,255,0.3); font-weight: 500; }
+        .credit .brand span { color: #60a5fa; }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 768px) {
+            nav { padding: 12px 16px; }
+            .dashboard { padding: 16px; }
+            .profile-header { flex-direction: column; text-align: center; padding: 20px; }
+            .card { padding: 20px; }
+            .tabs { flex-direction: column; }
+            .tab-btn { text-align: center; }
+            .setting-item { flex-wrap: wrap; gap: 12px; }
+        }
+        @media (max-width: 480px) {
+            nav { flex-direction: column; align-items: stretch; gap: 8px; }
+            .nav-right { justify-content: space-between; }
+            .profile-avatar { width: 60px; height: 60px; font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-canvas">
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+</div>
+
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
+<nav>
+    <div class="logo"><span>🇰🇪</span>Zurifex</div>
+    <div class="nav-right">
+        <a href="dashboard-freelancer.html" class="btn-back">← Dashboard</a>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+</nav>
+
+<!-- ============================================================
+     DASHBOARD
+     ============================================================ -->
+<div class="dashboard">
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="profile-avatar" id="avatarInitial">U</div>
+        <div class="profile-info">
+            <h1 id="profileName">User</h1>
+            <div class="email" id="profileEmail">user@email.com</div>
+            <span class="role-badge" id="profileRole">Freelancer</span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="edit">✏️ Edit Profile</button>
+        <button class="tab-btn" data-tab="security">🔒 Security</button>
+        <button class="tab-btn" data-tab="preferences">⚙️ Preferences</button>
+        <button class="tab-btn" data-tab="danger">⚠️ Danger Zone</button>
+    </div>
+
+    <!-- Tab: Edit Profile -->
+    <div class="tab-content active" id="tab-edit">
+        <div class="card">
+            <h2>✏️ Edit Profile</h2>
+            <p class="sub">Update your personal information and bio.</p>
+            <div id="msgEdit" class="msg"></div>
+            <form id="editForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="fullName" placeholder="Your full name">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" disabled style="opacity:0.5;cursor:not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="phone" placeholder="e.g., 0712 345 678">
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="location" placeholder="e.g., Nairobi, Kenya">
+                </div>
+                <div class="form-group">
+                    <label>Bio / About You</label>
+                    <textarea id="bio" placeholder="Tell us about yourself..."></textarea>
+                </div>
+                <div class="form-group" id="skillsGroup">
+                    <label>Skills (comma separated)</label>
+                    <input type="text" id="skills" placeholder="e.g., Writing, Design, Coding">
+                    <div class="helper">Enter skills separated by commas</div>
+                </div>
+                <button type="submit" class="btn-save" id="saveEditBtn">💾 Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tab: Security -->
+    <div class="tab-content" id="tab-security">
+        <div class="card">
+            <h2>🔒 Security Settings</h2>
+            <p class="sub">Manage your password and two-factor authentication.</p>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" id="currentPassword" placeholder="Enter current password">
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password (min 8 chars)">
+                </div>
+                <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                </div>
+                <button type="submit" class="btn-save" id="savePasswordBtn">🔑 Update Password</button>
+                <div id="msgSecurity" class="msg"></div>
+            </form>
+            <hr style="border-color:rgba(255,255,255,0.05);margin:24px 0;">
+            <div class="setting-item">
+                <div class="left">
+                    <div class="title">Two-Factor Authentication (2FA)</div>
+                    <div class="desc">Add an extra layer of security to your account</div>
+                </div>
+                <div class="toggle" id="twofaToggle" onclick="toggleTwoFA()">
+                    <div class="thumb"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Preferences -->
+    <div class="tab-content" id="tab-preferences">
+        <div class="card">
+            <h2>⚙️ Preferences</h2>
+            <p class="sub">Customize your experience on Zurifex.</p>
+            <div class="setting-item">
+                <div class="left">
+                    <div class="title">Email Notifications</div>
+                    <div class="desc">Receive email updates about tasks and payments</div>
+                </div>
+                <div class="toggle active" id="emailNotif" onclick="toggleToggle('emailNotif')">
+                    <div class="thumb"></div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="left">
+                    <div class="title">Push Notifications</div>
+                    <div class="desc">Receive browser notifications for new tasks</div>
+                </div>
+                <div class="toggle" id="pushNotif" onclick="toggleToggle('pushNotif')">
+                    <div class="thumb"></div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="left">
+                    <div class="title">Dark Mode</div>
+                    <div class="desc">Always on – Zurifex is dark by design</div>
+                </div>
+                <div class="toggle active" style="pointer-events:none;">
+                    <div class="thumb"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Danger Zone -->
+    <div class="tab-content" id="tab-danger">
+        <div class="card" style="border-color:rgba(248,113,113,0.2);">
+            <h2 style="color:#f87171;">⚠️ Danger Zone</h2>
+            <p class="sub">Irreversible actions – proceed with caution.</p>
+            <div class="setting-item">
+                <div class="left">
+                    <div class="title" style="color:#f87171;">Delete Account</div>
+                    <div class="desc">Permanently delete your account and all data</div>
+                </div>
+                <button class="btn-danger" onclick="confirmDelete()">🗑️ Delete Account</button>
+            </div>
+            <div class="setting-item">
+                <div class="left">
+                    <div class="title" style="color:#f87171;">Clear All Data</div>
+                    <div class="desc">Remove all your transactions and tasks</div>
+                </div>
+                <button class="btn-danger" onclick="confirmClear()">🧹 Clear Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credit -->
+    <div class="credit">
+        Built by <span class="brand"><span>Rshiraz</span></span> 🇰🇪 &nbsp;|&nbsp; © 2026 Zurifex. All rights reserved.
+    </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+    const API_URL = 'http://localhost:5000';
+    const user = JSON.parse(localStorage.getItem('zurifex_user') || 'null');
+    if (!user) window.location.href = 'login.html';
+
+    // ============================================================
+    // POPULATE PROFILE
+    // ============================================================
+    document.getElementById('profileName').textContent = user.full_name || 'User';
+    document.getElementById('profileEmail').textContent = user.email || 'user@email.com';
+    document.getElementById('profileRole').textContent = (user.role || 'freelancer').toUpperCase();
+    document.getElementById('avatarInitial').textContent = (user.full_name || 'U')[0].toUpperCase();
+
+    document.getElementById('fullName').value = user.full_name || '';
+    document.getElementById('email').value = user.email || '';
+    document.getElementById('phone').value = user.phone || '';
+    document.getElementById('location').value = user.location || '';
+    document.getElementById('bio').value = user.bio || '';
+    document.getElementById('skills').value = (user.skills || []).join(', ');
+
+    if (user.role !== 'freelancer') {
+        document.getElementById('skillsGroup').style.display = 'none';
+    }
+
+    // ============================================================
+    // TABS
+    // ============================================================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ============================================================
+    // EDIT PROFILE
+    // ============================================================
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('msgEdit');
+        const btn = document.getElementById('saveEditBtn');
+        msg.className = 'msg';
+        btn.disabled = true;
+        btn.textContent = '⏳ Saving...';
+
+        try {
+            const full_name = document.getElementById('fullName').value;
+            const phone = document.getElementById('phone').value;
+            const location = document.getElementById('location').value;
+            const bio = document.getElementById('bio').value;
+            const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(Boolean);
+
+            const res = await fetch(`${API_URL}/api/users/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_name, phone, location, bio, skills })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Update failed');
+
+            const updatedUser = { ...user, ...data.user };
+            localStorage.setItem('zurifex_user', JSON.stringify(updatedUser));
+            // Update header
+            document.getElementById('profileName').textContent = updatedUser.full_name;
+            document.getElementById('avatarInitial').textContent = updatedUser.full_name[0].toUpperCase();
+
+            msg.textContent = '✅ Profile updated successfully!';
+            msg.className = 'msg success';
+        } catch (error) {
+            msg.textContent = '❌ ' + error.message;
+            msg.className = 'msg error';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Changes';
+        }
+    });
+
+    // ============================================================
+    // PASSWORD CHANGE (Mock)
+    // ============================================================
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('msgSecurity');
+        const btn = document.getElementById('savePasswordBtn');
+        msg.className = 'msg';
+        btn.disabled = true;
+        btn.textContent = '⏳ Updating...';
+
+        const current = document.getElementById('currentPassword').value;
+        const newPass = document.getElementById('newPassword').value;
+        const confirm = document.getElementById('confirmPassword').value;
+
+        if (!current || !newPass || !confirm) {
+            msg.textContent = '❌ Please fill all password fields.';
+            msg.className = 'msg error';
+            btn.disabled = false;
+            btn.textContent = '🔑 Update Password';
+            return;
+        }
+        if (newPass.length < 8) {
+            msg.textContent = '❌ New password must be at least 8 characters.';
+            msg.className = 'msg error';
+            btn.disabled = false;
+            btn.textContent = '🔑 Update Password';
+            return;
+        }
+        if (newPass !== confirm) {
+            msg.textContent = '❌ Passwords do not match.';
+            msg.className = 'msg error';
+            btn.disabled = false;
+            btn.textContent = '🔑 Update Password';
+            return;
+        }
+
+        // Simulate API call
+        setTimeout(() => {
+            msg.textContent = '✅ Password updated successfully! (Demo)';
+            msg.className = 'msg success';
+            btn.disabled = false;
+            btn.textContent = '🔑 Update Password';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        }, 1500);
+    });
+
+    // ============================================================
+    // TOGGLES
+    // ============================================================
+    function toggleToggle(id) {
+        const el = document.getElementById(id);
+        el.classList.toggle('active');
+    }
+
+    function toggleTwoFA() {
+        const el = document.getElementById('twofaToggle');
+        el.classList.toggle('active');
+        alert(el.classList.contains('active') ? '✅ 2FA enabled (demo)' : '❌ 2FA disabled (demo)');
+    }
+
+    // ============================================================
+    // DANGER ZONE
+    // ============================================================
+    function confirmDelete() {
+        if (confirm('⚠️ Are you sure you want to DELETE your account? This action is irreversible!')) {
+            if (confirm('Really? All your data will be permanently lost.')) {
+                alert('Account deletion request submitted. (Demo)');
+            }
+        }
+    }
+
+    function confirmClear() {
+        if (confirm('🧹 Are you sure you want to clear all your data? This cannot be undone.')) {
+            alert('Data cleared. (Demo)');
+        }
+    }
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    function logout() {
+        localStorage.removeItem('zurifex_user');
+        localStorage.removeItem('zurifex_token');
+        window.location.href = 'login.html';
+    }
+</script>
+</body>
+</html>

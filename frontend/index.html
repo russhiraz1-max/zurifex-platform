@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zurifex 🇰🇪 - Earn, Post Tasks & Grow</title>
+    <style>
+        /* ========== RESET ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ========== ANIMATED BACKGROUND ========== */
+        .bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        .bg-canvas::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .glow-orb:nth-child(1) {
+            width: 500px;
+            height: 500px;
+            top: -200px;
+            left: -100px;
+            background: #1a3a8a;
+        }
+        .glow-orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            bottom: -100px;
+            right: -50px;
+            background: #7a1a5a;
+        }
+        .glow-orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            top: 40%;
+            left: 40%;
+            background: #1a5a7a;
+        }
+
+        /* ========== GLASS NAVBAR ========== */
+        nav {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            background: rgba(10, 10, 30, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo span {
+            -webkit-text-fill-color: initial;
+            color: #fff;
+            margin-right: 4px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        .nav-links a:hover {
+            color: #fff;
+        }
+        .btn-nav {
+            padding: 10px 28px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+        }
+        .btn-nav:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+        }
+        .btn-nav-outline {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+        }
+        .btn-nav-outline:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* ========== HERO ========== */
+        .hero {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 80px 60px 100px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 80vh;
+        }
+        .hero-left {
+            max-width: 600px;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #60a5fa;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+        .hero h1 {
+            font-size: 60px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero p {
+            font-size: 18px;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.8;
+            margin-bottom: 32px;
+            max-width: 480px;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+        }
+        .btn-primary {
+            padding: 14px 40px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.35);
+        }
+        .btn-secondary {
+            padding: 14px 40px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.15);
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+            background: transparent;
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        /* ========== STATS ========== */
+        .stats {
+            display: flex;
+            gap: 48px;
+            margin-top: 48px;
+        }
+        .stat-item .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .stat-item .label {
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+        }
+
+        /* ========== HERO RIGHT ========== */
+        .hero-right {
+            position: relative;
+            width: 500px;
+            height: 500px;
+        }
+        .hero-card {
+            position: absolute;
+            background: rgba(20, 20, 50, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255,255,255,0.06);
+            min-width: 200px;
+            animation: float 6s ease-in-out infinite;
+        }
+        .hero-card:nth-child(1) {
+            top: 20px;
+            right: 20px;
+            animation-delay: 0s;
+        }
+        .hero-card:nth-child(2) {
+            bottom: 80px;
+            left: 0;
+            animation-delay: 2s;
+        }
+        .hero-card:nth-child(3) {
+            bottom: 20px;
+            right: 60px;
+            animation-delay: 4s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .hero-card .emoji {
+            font-size: 28px;
+            margin-right: 12px;
+        }
+        .hero-card .title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .hero-card .sub {
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+        }
+        .hero-card .amount {
+            font-weight: 700;
+            color: #4ade80;
+            font-size: 18px;
+        }
+
+        /* ========== FEATURES ========== */
+        .features {
+            position: relative;
+            z-index: 10;
+            padding: 80px 60px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .features h2 {
+            font-size: 40px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .features-sub {
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 18px;
+            margin-bottom: 48px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .feature-card {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .feature-card .icon {
+            font-size: 36px;
+            margin-bottom: 16px;
+        }
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ========== FOOTER ========== */
+        footer {
+            position: relative;
+            z-index: 10;
+            padding: 40px 60px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        footer p {
+            color: rgba(255,255,255,0.3);
+            font-size: 13px;
+        }
+        footer .brand {
+            color: rgba(255,255,255,0.5);
+            font-weight: 600;
+        }
+        footer .brand span {
+            color: #60a5fa;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 1024px) {
+            .hero {
+                flex-direction: column;
+                text-align: center;
+                padding: 40px 20px 60px;
+            }
+            .hero-left {
+                max-width: 100%;
+            }
+            .hero p {
+                max-width: 100%;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .hero-buttons {
+                justify-content: center;
+            }
+            .stats {
+                justify-content: center;
+            }
+            .hero-right {
+                width: 100%;
+                height: 300px;
+                margin-top: 40px;
+            }
+            .hero-card {
+                position: relative;
+                top: auto !important;
+                bottom: auto !important;
+                left: auto !important;
+                right: auto !important;
+                display: inline-block;
+                margin: 8px;
+                animation: none !important;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            nav {
+                padding: 16px 20px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            .nav-links {
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+            .hero h1 {
+                font-size: 36px;
+            }
+            .features {
+                padding: 40px 20px;
+            }
+            footer {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-canvas">
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+</div>
+
+<!-- Navbar -->
+<nav>
+    <div class="logo"><span>🇰🇪</span>Zurifex</div>
+    <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#tasks">Tasks</a>
+        <a href="login.html" class="btn-nav btn-nav-outline">Sign In</a>
+        <a href="login.html" class="btn-nav">Get Started</a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-left">
+        <div class="hero-badge">🔥 Now Live in Kenya</div>
+        <h1>
+            Earn Money<br>
+            <span class="highlight">Online. Anytime.</span>
+        </h1>
+        <p>
+            Complete simple tasks, get paid instantly. Post tasks and find the best freelancers in Kenya. No fees, no middlemen — just pure earnings.
+        </p>
+        <div class="hero-buttons">
+            <a href="login.html" class="btn-primary">Start Earning 🇰🇪</a>
+            <a href="login.html" class="btn-secondary">Post a Task</a>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="number">1,200+</div>
+                <div class="label">Active Users</div>
+            </div>
+            <div class="stat-item">
+                <div class="number">450+</div>
+                <div class="label">Tasks Completed</div>
+            </div>
+            <div class="stat-item">
+                <div class="number">$3,200</div>
+                <div class="label">Earned This Month</div>
+            </div>
+        </div>
+    </div>
+    <div class="hero-right">
+        <div class="hero-card" style="top:20px;right:20px;">
+            <div><span class="emoji">📱</span><span class="title">App Testing</span></div>
+            <div class="sub">Complete in 5 mins</div>
+            <div class="amount">$2.00</div>
+        </div>
+        <div class="hero-card" style="bottom:80px;left:0;">
+            <div><span class="emoji">✍️</span><span class="title">Content Writing</span></div>
+            <div class="sub">500 words article</div>
+            <div class="amount">$5.00</div>
+        </div>
+        <div class="hero-card" style="bottom:20px;right:60px;">
+            <div><span class="emoji">📸</span><span class="title">Social Media</span></div>
+            <div class="sub">Share & engage</div>
+            <div class="amount">$1.00</div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+    <h2>Why <span style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Zurifex</span></h2>
+    <p class="features-sub">Built by Kenyans, for Kenyans. Simple, transparent, and trustworthy.</p>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="icon">🛡️</div>
+            <h3>Safe & Secure</h3>
+            <p>All tasks are verified. Your earnings are safe. We hold funds until you complete the work.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon">⚡</div>
+            <h3>Fast Payments</h3>
+            <p>Get paid within 24 hours. Withdraw via M-Pesa, PayPal, or Bank Transfer.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon">🇰🇪</div>
+            <h3>Local Community</h3>
+            <p>Connect with Kenyan freelancers and clients. No more competing globally.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon">📱</div>
+            <h3>Mobile Friendly</h3>
+            <p>Work from anywhere. Your phone is all you need to earn.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon">💎</div>
+            <h3>Zero Fees</h3>
+            <p>No hidden charges. You earn what you complete. We take a small commission only on withdrawals.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon">🤝</div>
+            <h3>Trusted Platform</h3>
+            <p>Every advertisor is verified before posting. Your safety is our priority.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <p>
+        Built by <span class="brand">Rshiraz</span> 🇰🇪 &nbsp;|&nbsp; © 2026 Zurifex. All rights reserved.
+    </p>
+</footer>
+
+<script>
+    // Simple animation for stats counting
+    document.addEventListener('DOMContentLoaded', () => {
+        const statNumbers = document.querySelectorAll('.stat-item .number');
+        statNumbers.forEach(el => {
+            const text = el.textContent;
+            const num = parseInt(text.replace(/[^0-9]/g, ''));
+            if (!isNaN(num)) {
+                let current = 0;
+                const target = num;
+                const increment = target / 40;
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        el.textContent = text.replace(/[0-9,]+/, target.toLocaleString());
+                        clearInterval(timer);
+                    } else {
+                        el.textContent = text.replace(/[0-9,]+/, Math.floor(current).toLocaleString());
+                    }
+                }, 30);
+            }
+        });
+    });
+</script>
+
+<script>
+    // Error logging system
+    const LOG_KEY = 'zurifex_error_logs';
+
+    function logError(type, message, details = null) {
+        const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+        logs.unshift({
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            timestamp: new Date().toISOString(),
+            type: type,
+            message: message,
+            details: details,
+            user: JSON.parse(localStorage.getItem('zurifex_user') || 'null'),
+            url: window.location.href
+        });
+        if (logs.length > 500) logs.pop();
+        localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+        console.error(`[${type.toUpperCase()}]`, message, details);
+    }
+
+    // Auto-catch console errors
+    const origError = console.error;
+    console.error = function(...args) {
+        origError.apply(console, args);
+        const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+        if (msg.includes('Error') || msg.includes('Failed') || msg.includes('404') || msg.includes('500')) {
+            logError('frontend', msg, { args: args });
+        }
+    };
+
+    // Catch unhandled errors
+    window.onerror = function(message, source, lineno, colno, error) {
+        logError('frontend', message, { source, line: lineno, column: colno, stack: error?.stack });
+        return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+        logError('frontend', 'Unhandled Promise Rejection', { reason: String(event.reason) });
+    };
+</script>
+
+</body>
+</html>

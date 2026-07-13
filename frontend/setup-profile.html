@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Up Your Profile - Zurifex 🇰🇪</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        .container {
+            position: relative;
+            z-index: 10;
+            background: rgba(20, 20, 50, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px 48px;
+            max-width: 600px;
+            width: 92%;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .container h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .container h1 span {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .container .sub {
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 4px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 15px;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+        .form-group select option { background: #1a1a2e; }
+        .role-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .role-card {
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+            text-align: center;
+            transition: 0.3s;
+        }
+        .role-card:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .role-card.active {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .role-card .icon { font-size: 32px; }
+        .role-card .name { font-weight: 600; margin-top: 8px; }
+        .role-card .desc { font-size: 12px; color: rgba(255,255,255,0.3); }
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 8px;
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .error-msg {
+            display: none;
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.08);
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-top: 12px;
+            border: 1px solid rgba(248, 113, 113, 0.15);
+        }
+        .error-msg.show { display: block; }
+        .credit {
+            text-align: center;
+            padding: 16px 0 0;
+            color: rgba(255,255,255,0.15);
+            font-size: 13px;
+        }
+        .credit .brand { color: #60a5fa; }
+    </style>
+</head>
+<body>
+<div class="bg-canvas"></div>
+
+<div class="container">
+    <h1>🇰🇪 Welcome to <span>Zurifex</span></h1>
+    <p class="sub">Set up your profile to get started. Choose your role and tell us about yourself.</p>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div class="form-group">
+        <label>I want to...</label>
+        <div class="role-selector">
+            <div class="role-card" data-role="freelancer" onclick="selectRole('freelancer')">
+                <div class="icon">💼</div>
+                <div class="name">Earn Money</div>
+                <div class="desc">Complete tasks and get paid</div>
+            </div>
+            <div class="role-card" data-role="advertisor" onclick="selectRole('advertisor')">
+                <div class="icon">📝</div>
+                <div class="name">Post Tasks</div>
+                <div class="desc">Hire freelancers for tasks</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Phone Number</label>
+        <input type="tel" id="phone" placeholder="e.g., 0712 345 678">
+    </div>
+
+    <div class="form-group">
+        <label>Location</label>
+        <input type="text" id="location" placeholder="e.g., Nairobi, Kenya">
+    </div>
+
+    <div class="form-group">
+        <label>Bio / About You</label>
+        <textarea id="bio" rows="3" placeholder="Tell us a bit about yourself..."></textarea>
+    </div>
+
+    <div class="form-group" id="skillsGroup">
+        <label>Skills (comma separated)</label>
+        <input type="text" id="skills" placeholder="e.g., Writing, Design, Coding">
+    </div>
+
+    <button class="btn-submit" id="submitBtn" onclick="saveProfile()">🚀 Complete Setup</button>
+
+    <div class="credit">
+        Built by <span class="brand">Rshiraz</span> 🇰🇪
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5000';
+    const user = JSON.parse(localStorage.getItem('zurifex_user') || 'null');
+    if (!user) window.location.href = 'login.html';
+
+    let selectedRole = 'freelancer';
+
+    function selectRole(role) {
+        selectedRole = role;
+        document.querySelectorAll('.role-card').forEach(el => {
+            el.classList.toggle('active', el.dataset.role === role);
+        });
+        document.getElementById('skillsGroup').style.display = role === 'freelancer' ? 'block' : 'none';
+    }
+
+    async function saveProfile() {
+        const errorMsg = document.getElementById('errorMsg');
+        errorMsg.classList.remove('show');
+
+        const phone = document.getElementById('phone').value;
+        const location = document.getElementById('location').value;
+        const bio = document.getElementById('bio').value;
+        const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(Boolean);
+
+        if (!selectedRole) {
+            errorMsg.textContent = '❌ Please select a role';
+            errorMsg.classList.add('show');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Saving...';
+
+        try {
+            const res = await fetch(`${API_URL}/api/users/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    role: selectedRole,
+                    phone,
+                    location,
+                    bio,
+                    skills: selectedRole === 'freelancer' ? skills : []
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to save profile');
+            }
+
+            // Update local user data
+            const updatedUser = { ...user, ...data.user };
+            localStorage.setItem('zurifex_user', JSON.stringify(updatedUser));
+
+            // Redirect based on role
+            if (selectedRole === 'admin') {
+                window.location.href = 'admin-panel.html';
+            } else if (selectedRole === 'advertisor') {
+                window.location.href = 'dashboard-advertisor.html';
+            } else {
+                window.location.href = 'dashboard-freelancer.html';
+            }
+
+        } catch (error) {
+            errorMsg.textContent = '❌ ' + error.message;
+            errorMsg.classList.add('show');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🚀 Complete Setup';
+        }
+    }
+
+    // Auto-select freelancer by default
+    selectRole('freelancer');
+</script>
+</body>
+</html>

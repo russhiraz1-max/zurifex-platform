@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Zurifex 🇰🇪</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(10, 30, 80, 0.6), transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(80, 20, 60, 0.3), transparent 50%),
+                        #0a0a1a;
+        }
+        nav {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 40px;
+            background: rgba(10, 10, 30, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo span { -webkit-text-fill-color: initial; color: #fff; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .nav-right .user-info { font-size: 14px; color: rgba(255,255,255,0.6); }
+        .nav-right .user-info strong { color: #fff; }
+        .nav-right .role-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .btn-logout {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .dashboard {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 40px 60px;
+        }
+        .welcome { margin-bottom: 32px; }
+        .welcome h1 { font-size: 32px; font-weight: 700; }
+        .welcome h1 span {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome p { color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+        .admin-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .admin-tabs button {
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(20, 20, 50, 0.5);
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        .admin-tabs button:hover { color: #fff; background: rgba(30, 30, 70, 0.5); }
+        .admin-tabs button.active {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #fff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .pending-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 16px;
+        }
+        .pending-card {
+            background: rgba(20, 20, 50, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .pending-card .title { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+        .pending-card .sub { color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 8px; }
+        .pending-card .details { font-size: 13px; color: rgba(255,255,255,0.3); margin-bottom: 12px; }
+        .pending-card .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-approve {
+            padding: 6px 18px;
+            border-radius: 6px;
+            border: none;
+            background: #4ade80;
+            color: #0a0a1a;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-approve:hover { transform: scale(1.05); }
+        .btn-reject {
+            padding: 6px 18px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-reject:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .btn-process {
+            padding: 6px 18px;
+            border-radius: 6px;
+            border: none;
+            background: #60a5fa;
+            color: #0a0a1a;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-process:hover { transform: scale(1.05); }
+        .empty-state { color: rgba(255,255,255,0.3); text-align: center; padding: 40px; }
+        .credit { text-align: center; padding: 20px; color: rgba(255,255,255,0.15); font-size: 13px; }
+        .credit .brand { color: #60a5fa; }
+        @media (max-width: 768px) {
+            nav { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+            .dashboard { padding: 16px; }
+            .pending-grid { grid-template-columns: 1fr; }
+            .admin-tabs button { padding: 8px 16px; font-size: 12px; }
+            .welcome h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-canvas"></div>
+
+<nav>
+    <div class="logo"><span>🇰🇪</span>Zurifex <span style="font-size:12px;background:#3b82f6;padding:2px 10px;border-radius:12px;color:#fff;-webkit-text-fill-color:#fff;">Admin</span></div>
+    <div class="nav-right">
+        <span class="role-badge">🔐 Admin</span>
+        <span class="user-info">👋 <strong id="userName">Admin</strong></span>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+</nav>
+
+<div class="dashboard">
+    <div class="welcome">
+        <h1>🛡️ Admin Dashboard</h1>
+        <p>Review, approve, and manage everything from one place.</p>
+    </div>
+
+    <div class="admin-tabs">
+        <button class="active" data-tab="advertisors">📋 Advertisors Pending</button>
+        <button data-tab="tasks">📝 Tasks Pending</button>
+        <button data-tab="completions">✅ Completions Pending</button>
+        <button data-tab="withdrawals">💰 Withdrawals Pending</button>
+        <button data-tab="deposits">💵 Manual Deposits</button>
+    </div>
+
+    <!-- Tab 1: Advertisors -->
+    <div class="tab-content active" id="tab-advertisors">
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Advertisors Awaiting Approval</h2>
+        <div id="advertisorContainer"><div class="empty-state">⏳ Loading...</div></div>
+    </div>
+
+    <!-- Tab 2: Tasks -->
+    <div class="tab-content" id="tab-tasks">
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Tasks Awaiting Approval</h2>
+        <div id="taskContainer"><div class="empty-state">⏳ Loading...</div></div>
+    </div>
+
+    <!-- Tab 3: Completions -->
+    <div class="tab-content" id="tab-completions">
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Task Completions Awaiting Review</h2>
+        <div id="completionContainer"><div class="empty-state">⏳ Loading...</div></div>
+    </div>
+
+    <!-- Tab 4: Withdrawals -->
+    <div class="tab-content" id="tab-withdrawals">
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Withdrawal Requests</h2>
+        <div id="withdrawalContainer"><div class="empty-state">⏳ Loading...</div></div>
+    </div>
+
+    <!-- Tab 5: Deposits -->
+    <div class="tab-content" id="tab-deposits">
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Manual Deposit - Add Funds to User Wallet</h2>
+        <div style="background:rgba(20,20,50,0.5);backdrop-filter:blur(10px);border-radius:12px;padding:24px;border:1px solid rgba(255,255,255,0.05);max-width:500px;">
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="color:rgba(255,255,255,0.7);font-size:14px;display:block;margin-bottom:4px;">User Email</label>
+                <input type="email" id="depositEmail" placeholder="user@email.com" style="width:100%;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.3);color:#fff;font-size:15px;">
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="color:rgba(255,255,255,0.7);font-size:14px;display:block;margin-bottom:4px;">Amount ($)</label>
+                <input type="number" id="depositAmount" placeholder="20.00" step="0.01" min="0.01" style="width:100%;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.3);color:#fff;font-size:15px;">
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="color:rgba(255,255,255,0.7);font-size:14px;display:block;margin-bottom:4px;">Description</label>
+                <input type="text" id="depositDesc" placeholder="Bank deposit - Reference XYZ" style="width:100%;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.3);color:#fff;font-size:15px;">
+            </div>
+            <button onclick="processDeposit()" class="btn-process" style="width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-weight:600;font-size:16px;cursor:pointer;">💵 Add Funds</button>
+            <div id="depositResult" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <div class="credit">
+        Built by <span class="brand">Rshiraz</span> 🇰🇪 &nbsp;|&nbsp; © 2026 Zurifex
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5000';
+    const user = JSON.parse(localStorage.getItem('zurifex_user') || 'null');
+    if (!user || user.role !== 'admin') window.location.href = 'login.html';
+
+    document.getElementById('userName').textContent = user.full_name || 'Admin';
+
+    // ========== TAB SWITCHING ==========
+    document.querySelectorAll('.admin-tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.admin-tabs button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            // Refresh data for the tab
+            fetchAll();
+        });
+    });
+
+    // ========== FETCH ALL ==========
+    async function fetchAll() {
+        await Promise.all([
+            fetchAdvertisors(),
+            fetchTasks(),
+            fetchCompletions(),
+            fetchWithdrawals()
+        ]);
+    }
+
+    // ========== FETCH ADVERTISORS ==========
+    async function fetchAdvertisors() {
+        const container = document.getElementById('advertisorContainer');
+        try {
+            const res = await fetch(`${API_URL}/api/admin/users`);
+            if (!res.ok) throw new Error('Failed to fetch users');
+            const data = await res.json();
+            const users = data.users || [];
+            const pending = users.filter(u => u.role === 'advertisor' && !u.is_approved);
+
+            if (pending.length === 0) {
+                container.innerHTML = `<div class="empty-state">✅ All advertisers are approved. Nothing pending.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<div class="pending-grid">${pending.map(u => `
+                <div class="pending-card">
+                    <div class="title">${u.full_name}</div>
+                    <div class="sub">${u.email}</div>
+                    <div class="details">${u.phone || 'No phone'} · ${u.location || 'No location'}</div>
+                    <div class="actions">
+                        <button class="btn-approve" onclick="approveAdvertisor('${u.id}')">✅ Approve</button>
+                        <button class="btn-reject">Reject</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state">❌ Failed to load</div>`;
+        }
+    }
+
+    // ========== APPROVE ADVERTISOR ==========
+    async function approveAdvertisor(userId) {
+        try {
+            const res = await fetch(`${API_URL}/api/admin/users/${userId}/approve`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_id: user.id })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('✅ Advertisor approved successfully!');
+                fetchAdvertisors();
+            } else {
+                alert('❌ ' + (data.error || 'Failed to approve'));
+            }
+        } catch (error) {
+            alert('❌ Network error');
+        }
+    }
+
+    // ========== FETCH PENDING TASKS ==========
+    async function fetchTasks() {
+        const container = document.getElementById('taskContainer');
+        try {
+            const res = await fetch(`${API_URL}/api/admin/tasks/pending`);
+            if (!res.ok) throw new Error('Failed to fetch tasks');
+            const data = await res.json();
+            const tasks = data.tasks || [];
+
+            if (tasks.length === 0) {
+                container.innerHTML = `<div class="empty-state">✅ No pending tasks. All approved.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<div class="pending-grid">${tasks.map(t => `
+                <div class="pending-card">
+                    <div class="title">${t.title}</div>
+                    <div class="sub">By: ${t.advertisor?.full_name || 'Unknown'} · $${t.total_budget}</div>
+                    <div class="details">${t.category} · ${t.max_completions} completions</div>
+                    <div class="actions">
+                        <button class="btn-approve" onclick="approveTask('${t.id}')">✅ Approve</button>
+                        <button class="btn-reject">Reject</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state">❌ Failed to load</div>`;
+        }
+    }
+
+    async function approveTask(taskId) {
+        try {
+            const res = await fetch(`${API_URL}/api/tasks/${taskId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'active' })
+            });
+            if (res.ok) {
+                alert('✅ Task approved and active!');
+                fetchTasks();
+            } else {
+                alert('❌ Failed to approve task');
+            }
+        } catch (error) {
+            alert('❌ Network error');
+        }
+    }
+
+    // ========== FETCH PENDING COMPLETIONS ==========
+    async function fetchCompletions() {
+        const container = document.getElementById('completionContainer');
+        try {
+            const res = await fetch(`${API_URL}/api/admin/completions/pending`);
+            if (!res.ok) throw new Error('Failed to fetch completions');
+            const data = await res.json();
+            const completions = data.completions || [];
+
+            if (completions.length === 0) {
+                container.innerHTML = `<div class="empty-state">✅ No pending completions. All approved.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<div class="pending-grid">${completions.map(c => `
+                <div class="pending-card">
+                    <div class="title">${c.task?.title || 'Unknown Task'}</div>
+                    <div class="sub">By: ${c.freelancer?.full_name || 'Unknown'}</div>
+                    <div class="details">$${c.amount_earned} · ${c.submission_text || 'No submission text'}</div>
+                    <div class="actions">
+                        <button class="btn-approve" onclick="approveCompletion('${c.id}')">✅ Approve & Pay</button>
+                        <button class="btn-reject">Reject</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state">❌ Failed to load</div>`;
+        }
+    }
+
+    async function approveCompletion(completionId) {
+        try {
+            const res = await fetch(`${API_URL}/api/completions/${completionId}/approve`, {
+                method: 'PUT'
+            });
+            if (res.ok) {
+                alert('✅ Completion approved! Payment processed.');
+                fetchCompletions();
+            } else {
+                const data = await res.json();
+                alert('❌ ' + (data.error || 'Failed to approve'));
+            }
+        } catch (error) {
+            alert('❌ Network error');
+        }
+    }
+
+    // ========== FETCH PENDING WITHDRAWALS ==========
+    async function fetchWithdrawals() {
+        const container = document.getElementById('withdrawalContainer');
+        try {
+            const res = await fetch(`${API_URL}/api/admin/withdrawals/pending`);
+            if (!res.ok) throw new Error('Failed to fetch withdrawals');
+            const data = await res.json();
+            const withdrawals = data.withdrawals || [];
+
+            if (withdrawals.length === 0) {
+                container.innerHTML = `<div class="empty-state">✅ No pending withdrawals.</div>`;
+                return;
+            }
+
+            container.innerHTML = `<div class="pending-grid">${withdrawals.map(w => `
+                <div class="pending-card">
+                    <div class="title">${w.user?.full_name || 'Unknown'}</div>
+                    <div class="sub">$${w.amount} → ${w.payment_method}</div>
+                    <div class="details">Fee: $${w.fee.toFixed(2)} · Net: $${w.net_amount.toFixed(2)}</div>
+                    <div class="details">${w.payment_details ? JSON.stringify(w.payment_details) : 'No details'}</div>
+                    <div class="actions">
+                        <button class="btn-process" onclick="processWithdrawal('${w.id}','completed')">✅ Mark Paid</button>
+                        <button class="btn-reject" onclick="processWithdrawal('${w.id}','cancelled')">Cancel</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state">❌ Failed to load</div>`;
+        }
+    }
+
+    async function processWithdrawal(withdrawalId, status) {
+        try {
+            const res = await fetch(`${API_URL}/api/withdrawals/${withdrawalId}/process`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    admin_id: user.id,
+                    status: status,
+                    admin_notes: status === 'completed' ? 'Payment sent successfully' : 'Cancelled by admin'
+                })
+            });
+            if (res.ok) {
+                alert(status === 'completed' ? '✅ Withdrawal marked as paid!' : '❌ Withdrawal cancelled');
+                fetchWithdrawals();
+            } else {
+                alert('❌ Failed to process');
+            }
+        } catch (error) {
+            alert('❌ Network error');
+        }
+    }
+
+    // ========== PROCESS DEPOSIT ==========
+    async function processDeposit() {
+        const email = document.getElementById('depositEmail').value;
+        const amount = parseFloat(document.getElementById('depositAmount').value);
+        const description = document.getElementById('depositDesc').value || 'Manual deposit';
+        const result = document.getElementById('depositResult');
+
+        if (!email || isNaN(amount) || amount <= 0) {
+            result.innerHTML = '<div style="color:#f87171;">❌ Please enter valid email and amount</div>';
+            return;
+        }
+
+        try {
+            // First, get user by email
+            const usersRes = await fetch(`${API_URL}/api/admin/users`);
+            const usersData = await usersRes.json();
+            const user = usersData.users.find(u => u.email === email);
+
+            if (!user) {
+                result.innerHTML = '<div style="color:#f87171;">❌ User not found with that email</div>';
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/api/admin/wallet/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    amount: amount,
+                    description: description,
+                    admin_id: user.id
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                result.innerHTML = `<div style="color:#4ade80;">✅ Added $${amount} to ${email}. New balance: $${data.new_balance.toFixed(2)}</div>`;
+                document.getElementById('depositEmail').value = '';
+                document.getElementById('depositAmount').value = '';
+                document.getElementById('depositDesc').value = '';
+            } else {
+                result.innerHTML = `<div style="color:#f87171;">❌ ${data.error || 'Failed to add funds'}</div>`;
+            }
+        } catch (error) {
+            result.innerHTML = '<div style="color:#f87171;">❌ Network error</div>';
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('zurifex_user');
+        localStorage.removeItem('zurifex_token');
+        window.location.href = 'login.html';
+    }
+
+    // Load all data
+    fetchAll();
+</script>
+
+<script>
+    // Error logging system
+    const LOG_KEY = 'zurifex_error_logs';
+
+    function logError(type, message, details = null) {
+        const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+        logs.unshift({
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            timestamp: new Date().toISOString(),
+            type: type,
+            message: message,
+            details: details,
+            user: JSON.parse(localStorage.getItem('zurifex_user') || 'null'),
+            url: window.location.href
+        });
+        if (logs.length > 500) logs.pop();
+        localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+        console.error(`[${type.toUpperCase()}]`, message, details);
+    }
+
+    // Auto-catch console errors
+    const origError = console.error;
+    console.error = function(...args) {
+        origError.apply(console, args);
+        const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+        if (msg.includes('Error') || msg.includes('Failed') || msg.includes('404') || msg.includes('500')) {
+            logError('frontend', msg, { args: args });
+        }
+    };
+
+    // Catch unhandled errors
+    window.onerror = function(message, source, lineno, colno, error) {
+        logError('frontend', message, { source, line: lineno, column: colno, stack: error?.stack });
+        return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+        logError('frontend', 'Unhandled Promise Rejection', { reason: String(event.reason) });
+    };
+</script>
+
+</body>
+</html>
