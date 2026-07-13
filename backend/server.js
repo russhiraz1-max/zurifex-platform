@@ -7,8 +7,8 @@
 //  ╚══════╝░╚═════╝░╚═╝░░╚═╝╚═╝╚══════╝╚══════╝╚═╝░░╚═╝
 // ============================================================
 // ZURIFEX PLATFORM - COMPLETE BACKEND
-// Full API + Telegram Bot + Admin Deposit Management
-// Version: 7.0.0 (ULTIMATE MEGA EDITION)
+// Full API + Telegram Bot + Admin Deposit Management + Analytics
+// Version: 8.0.0 (SUPER ULTIMATE EDITION)
 // ============================================================
 
 const express = require('express');
@@ -19,11 +19,29 @@ const { OAuth2Client } = require('google-auth-library');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const os = require('os');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ============================================================
+// ════════════════════════════════════════════════════════════
+// SYSTEM INFORMATION
+// ════════════════════════════════════════════════════════════
+// ============================================================
+const SYSTEM_INFO = {
+    name: 'Zurifex API',
+    version: '8.0.0',
+    node_version: process.version,
+    platform: os.platform(),
+    arch: os.arch(),
+    cpus: os.cpus().length,
+    memory: os.totalmem(),
+    uptime: process.uptime,
+    start_time: new Date().toISOString()
+};
 
 // ============================================================
 // ════════════════════════════════════════════════════════════
@@ -86,6 +104,40 @@ function notifyBot(functionName, ...args) {
 
 // ============================================================
 // ════════════════════════════════════════════════════════════
+// RATE LIMITING
+// ════════════════════════════════════════════════════════════
+// ============================================================
+const rateLimits = {};
+
+function rateLimitMiddleware(limit = 100, window = 60000) {
+    return (req, res, next) => {
+        const ip = req.ip || req.connection.remoteAddress;
+        const key = `${ip}:${req.path}`;
+        const now = Date.now();
+        
+        if (!rateLimits[key]) {
+            rateLimits[key] = { count: 0, reset: now + window };
+        }
+        
+        if (now > rateLimits[key].reset) {
+            rateLimits[key] = { count: 0, reset: now + window };
+        }
+        
+        rateLimits[key].count++;
+        
+        if (rateLimits[key].count > limit) {
+            return res.status(429).json({ 
+                error: 'Too many requests. Please try again later.',
+                retry_after: Math.ceil((rateLimits[key].reset - now) / 1000)
+            });
+        }
+        
+        next();
+    };
+}
+
+// ============================================================
+// ════════════════════════════════════════════════════════════
 // MIDDLEWARE
 // ════════════════════════════════════════════════════════════
 // ============================================================
@@ -108,14 +160,33 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // LOGGING MIDDLEWARE
 // ════════════════════════════════════════════════════════════
 // ============================================================
+const requestLogs = [];
+
 app.use((req, res, next) => {
     const start = Date.now();
+    const requestId = generateUUID();
+    
     res.on('finish', () => {
         const duration = Date.now() - start;
-        const log = `[${new Date().toISOString()}] ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${req.ip}`;
-        console.log(log);
+        const log = {
+            id: requestId,
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            path: req.path,
+            status: res.statusCode,
+            duration: duration,
+            ip: req.ip || req.connection.remoteAddress,
+            userAgent: req.get('user-agent') || 'Unknown'
+        };
+        
+        requestLogs.unshift(log);
+        if (requestLogs.length > 1000) requestLogs.pop();
+        
+        const logString = `[${log.timestamp}] ${log.method} ${log.path} - ${log.status} - ${log.duration}ms - ${log.ip}`;
+        console.log(logString);
+        
         try {
-            fs.appendFileSync(path.join(__dirname, 'logs', 'requests.log'), log + '\n');
+            fs.appendFileSync(path.join(__dirname, 'logs', 'requests.log'), logString + '\n');
         } catch (e) { /* ignore */ }
     });
     next();
@@ -204,6 +275,30 @@ function isValidEmail(email) {
     return re.test(email);
 }
 
+function maskEmail(email) {
+    if (!email) return '';
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    const name = parts[0];
+    const domain = parts[1];
+    if (name.length <= 2) return email;
+    return name[0] + '***' + name[name.length - 1] + '@' + domain;
+}
+
+function getTimeAgo(dateString) {
+    const diff = Date.now() - new Date(dateString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    
+    if (weeks > 0) return weeks + 'w ago';
+    if (days > 0) return days + 'd ago';
+    if (hours > 0) return hours + 'h ago';
+    if (minutes > 0) return minutes + 'm ago';
+    return 'Just now';
+}
+
 // ============================================================
 // ════════════════════════════════════════════════════════════
 // TEST ROUTES
@@ -213,8 +308,8 @@ function isValidEmail(email) {
 // Root - API Status
 app.get('/', (req, res) => {
     res.json({
-        name: 'Zurifex API',
-        version: '7.0.0',
+        name: SYSTEM_INFO.name,
+        version: SYSTEM_INFO.version,
         message: 'Zurifex API is running 🇰🇪',
         status: 'online',
         bot: botConnected ? 'connected ✅' : 'disabled ⚠️',
@@ -229,8 +324,21 @@ app.get('/', (req, res) => {
             admin: '/api/admin',
             stats: '/api/stats',
             deposit: '/api/deposit/request',
-            health: '/api/health'
+            health: '/api/health',
+            system: '/api/system'
         }
+    });
+});
+
+// System Information
+app.get('/api/system', (req, res) => {
+    res.json({
+        system: SYSTEM_INFO,
+        environment: process.env.NODE_ENV || 'development',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        request_count: requestLogs.length,
+        bot_connected: botConnected
     });
 });
 
@@ -307,9 +415,12 @@ app.get('/api/stats', async (req, res) => {
         let totalEarnings = 0;
         if (earnings) earnings.forEach(t => { totalEarnings += t.amount || 0; });
 
+        const { count: activeTasks } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'active');
+
         res.json({
             users: usersCount || 0,
             tasks: tasksCount || 0,
+            active_tasks: activeTasks || 0,
             completed: completedCount || 0,
             total_earnings: totalEarnings,
             timestamp: new Date().toISOString()
@@ -328,14 +439,16 @@ app.get('/api/admin/analytics', async (req, res) => {
         const { count: activeTasks } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'active');
         const { count: pendingTasks } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         const { count: completedTasks } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'completed');
+        const { count: cancelledTasks } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'cancelled');
         
         const { count: totalCompletions } = await supabase.from('task_completions').select('*', { count: 'exact', head: true });
         const { count: pendingCompletions } = await supabase.from('task_completions').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         const { count: approvedCompletions } = await supabase.from('task_completions').select('*', { count: 'exact', head: true }).eq('status', 'approved');
+        const { count: rejectedCompletions } = await supabase.from('task_completions').select('*', { count: 'exact', head: true }).eq('status', 'rejected');
 
         // Users by role
         const { data: usersByRole } = await supabase.from('users').select('role');
-        let freelancers = 0, advertisers = 0, admins = 0;
+        let freelancers = 0, advertisers = 0, admins = 0, unapproved = 0;
         if (usersByRole) {
             usersByRole.forEach(u => {
                 if (u.role === 'freelancer') freelancers++;
@@ -343,6 +456,8 @@ app.get('/api/admin/analytics', async (req, res) => {
                 else if (u.role === 'admin') admins++;
             });
         }
+        const { count: unapprovedUsers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', false);
+        unapproved = unapprovedUsers || 0;
 
         // Earnings
         const { data: earnings } = await supabase.from('transactions').select('amount').eq('type', 'task_payment').eq('status', 'completed');
@@ -353,8 +468,20 @@ app.get('/api/admin/analytics', async (req, res) => {
         let totalWithdrawn = 0;
         if (withdrawn) withdrawn.forEach(t => { totalWithdrawn += Math.abs(t.amount) || 0; });
 
+        const { data: deposits } = await supabase.from('transactions').select('amount').eq('type', 'deposit').eq('status', 'completed');
+        let totalDeposited = 0;
+        if (deposits) deposits.forEach(t => { totalDeposited += t.amount || 0; });
+
         // Pending withdrawals
         const { count: pendingWithdrawals } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        const { count: processingWithdrawals } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'processing');
+        const { count: completedWithdrawals } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'completed');
+        const { count: failedWithdrawals } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'failed');
+
+        // Pending deposits
+        const { count: pendingDeposits } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'deposit').eq('status', 'pending');
+        const { count: completedDeposits } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'deposit').eq('status', 'completed');
+        const { count: failedDeposits } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'deposit').eq('status', 'failed');
 
         // Daily stats (last 7 days)
         const dailyStats = [];
@@ -364,39 +491,69 @@ app.get('/api/admin/analytics', async (req, res) => {
             const { count: dayUsers } = await supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end);
             const { count: dayTasks } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end);
             const { count: dayCompletions } = await supabase.from('task_completions').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end).eq('status', 'approved');
+            const { count: dayWithdrawals } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end);
+            const { count: dayDeposits } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end).eq('type', 'deposit').eq('status', 'completed');
             
             dailyStats.push({
                 date: start.split('T')[0],
                 newUsers: dayUsers || 0,
                 newTasks: dayTasks || 0,
-                completions: dayCompletions || 0
+                completions: dayCompletions || 0,
+                withdrawals: dayWithdrawals || 0,
+                deposits: dayDeposits || 0
             });
         }
+
+        // Top advertisers (by task budget)
+        const { data: topAdvertisers } = await supabase
+            .from('tasks')
+            .select('advertisor_id, total_budget, advertisor:advertisor_id(full_name, email)')
+            .order('total_budget', { ascending: false })
+            .limit(5);
+
+        // Top freelancers (by earnings)
+        const { data: topFreelancers } = await supabase
+            .from('users')
+            .select('full_name, email, total_earned')
+            .order('total_earned', { ascending: false })
+            .limit(5);
 
         res.json({
             users: {
                 total: totalUsers || 0,
                 freelancers: freelancers,
                 advertisers: advertisers,
-                admins: admins
+                admins: admins,
+                unapproved: unapproved
             },
             tasks: {
                 total: totalTasks || 0,
                 active: activeTasks || 0,
                 pending: pendingTasks || 0,
-                completed: completedTasks || 0
+                completed: completedTasks || 0,
+                cancelled: cancelledTasks || 0
             },
             completions: {
                 total: totalCompletions || 0,
                 pending: pendingCompletions || 0,
-                approved: approvedCompletions || 0
+                approved: approvedCompletions || 0,
+                rejected: rejectedCompletions || 0
             },
             financial: {
                 total_earnings: totalEarnings,
                 total_withdrawn: totalWithdrawn,
+                total_deposited: totalDeposited,
                 platform_balance: totalEarnings - totalWithdrawn,
-                pending_withdrawals: pendingWithdrawals || 0
+                pending_withdrawals: pendingWithdrawals || 0,
+                processing_withdrawals: processingWithdrawals || 0,
+                completed_withdrawals: completedWithdrawals || 0,
+                failed_withdrawals: failedWithdrawals || 0,
+                pending_deposits: pendingDeposits || 0,
+                completed_deposits: completedDeposits || 0,
+                failed_deposits: failedDeposits || 0
             },
+            top_advertisers: topAdvertisers || [],
+            top_freelancers: topFreelancers || [],
             daily_stats: dailyStats,
             timestamp: new Date().toISOString()
         });
@@ -408,127 +565,145 @@ app.get('/api/admin/analytics', async (req, res) => {
 
 // ============================================================
 // ════════════════════════════════════════════════════════════
-// AUTH ROUTE - Google Sign In
+// AUTH ROUTE - Google Sign In (FIXED - ROBUST)
 // ════════════════════════════════════════════════════════════
 // ============================================================
 app.post('/api/auth/google', async (req, res) => {
     try {
         const { idToken } = req.body;
-
-        if (!idToken) {
-            return res.status(400).json({ error: 'ID token required' });
-        }
+        if (!idToken) return res.status(400).json({ error: 'ID token required' });
 
         const ticket = await googleClient.verifyIdToken({
             idToken: idToken,
             audience: process.env.GOOGLE_CLIENT_ID
         });
-
         const payload = ticket.getPayload();
-        const { email, name, picture, sub: googleId } = payload;
+        const { email, name, picture } = payload;
 
-        // Check if user exists
+        // 1. Check public.users
         let { data: existingUser, error: fetchError } = await supabase
             .from('users')
             .select('*')
             .eq('email', email)
             .single();
 
-        let userData;
-        let isNew = false;
-
-        if (!existingUser) {
-            isNew = true;
-            // Create auth user
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-                email: email,
-                email_confirm: true,
-                user_metadata: {
-                    full_name: name,
-                    avatar_url: picture
-                }
-            });
-
-            if (authError) {
-                console.error('Auth creation error:', authError);
-                return res.status(500).json({ error: 'Failed to create user' });
-            }
-
-            // Create user profile
-            const { data: newUser, error: insertError } = await supabase
+        if (existingUser) {
+            // Update and return
+            const { data: updatedUser, error: updateError } = await supabase
                 .from('users')
-                .insert({
-                    id: authData.user.id,
-                    full_name: name,
-                    email: email,
-                    profile_photo_url: picture,
-                    role: 'freelancer',
-                    is_verified: true,
-                    is_approved: false,
-                    wallet_balance: 0,
-                    total_earned: 0,
-                    total_withdrawn: 0
-                })
+                .update({ full_name: name, profile_photo_url: picture, is_verified: true })
+                .eq('id', existingUser.id)
                 .select()
                 .single();
-
-            if (insertError) {
-                return res.status(500).json({ error: 'Failed to create profile' });
+            if (updateError) {
+                console.error('Update error:', updateError);
+                // Still return existing user if update fails
+                return res.json({
+                    success: true,
+                    user: {
+                        id: existingUser.id,
+                        email: existingUser.email,
+                        full_name: existingUser.full_name,
+                        role: existingUser.role,
+                        wallet_balance: existingUser.wallet_balance,
+                        is_approved: existingUser.is_approved,
+                        is_verified: existingUser.is_verified,
+                        profile_photo_url: existingUser.profile_photo_url,
+                        is_new: false
+                    }
+                });
             }
-
-            userData = newUser;
-
-            // Send notification about new user
-            notifyBot('notifyAdminUser', {
-                id: userData.id,
-                email: userData.email,
-                full_name: userData.full_name,
-                role: userData.role,
-                is_verified: userData.is_verified
-            });
-
             return res.json({
                 success: true,
                 user: {
-                    id: userData.id,
-                    email: userData.email,
-                    full_name: userData.full_name,
-                    role: userData.role,
-                    wallet_balance: userData.wallet_balance,
-                    is_approved: userData.is_approved,
-                    is_verified: userData.is_verified,
-                    profile_photo_url: userData.profile_photo_url,
-                    is_new: true
+                    id: updatedUser.id,
+                    email: updatedUser.email,
+                    full_name: updatedUser.full_name,
+                    role: updatedUser.role,
+                    wallet_balance: updatedUser.wallet_balance,
+                    is_approved: updatedUser.is_approved,
+                    is_verified: updatedUser.is_verified,
+                    profile_photo_url: updatedUser.profile_photo_url,
+                    is_new: false
                 }
             });
         }
 
-        // User exists - update
-        const { data: updatedUser, error: updateError } = await supabase
+        // 2. User not in public.users - check auth.users
+        let authUserId = null;
+        try {
+            // List all auth users (we can optimize by fetching just the one we need)
+            const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers();
+            if (listError) {
+                console.error('List users error:', listError);
+                throw new Error('Failed to list auth users');
+            }
+            const found = authUsers.users.find(u => u.email === email);
+            if (found) {
+                authUserId = found.id;
+            }
+        } catch (err) {
+            console.error('Error checking auth users:', err);
+        }
+
+        // If no auth user found, create one
+        if (!authUserId) {
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: email,
+                email_confirm: true,
+                user_metadata: { full_name: name, avatar_url: picture }
+            });
+            if (authError) {
+                console.error('Auth creation error:', authError);
+                return res.status(500).json({ error: 'Failed to create user: ' + authError.message });
+            }
+            authUserId = authData.user.id;
+        }
+
+        // 3. Insert into public.users
+        const { data: newUser, error: insertError } = await supabase
             .from('users')
-            .update({
+            .insert({
+                id: authUserId,
                 full_name: name,
+                email: email,
                 profile_photo_url: picture,
-                is_verified: true
+                role: 'freelancer',
+                is_verified: true,
+                is_approved: false,
+                wallet_balance: 0,
+                total_earned: 0,
+                total_withdrawn: 0
             })
-            .eq('id', existingUser.id)
             .select()
             .single();
 
-        userData = updatedUser || existingUser;
+        if (insertError) {
+            console.error('Insert error:', insertError);
+            return res.status(500).json({ error: 'Failed to create profile: ' + insertError.message });
+        }
+
+        // Send notification
+        notifyBot('notifyAdminUser', {
+            id: newUser.id,
+            email: newUser.email,
+            full_name: newUser.full_name,
+            role: newUser.role,
+            is_verified: newUser.is_verified
+        });
 
         return res.json({
             success: true,
             user: {
-                id: userData.id,
-                email: userData.email,
-                full_name: userData.full_name,
-                role: userData.role,
-                wallet_balance: userData.wallet_balance,
-                is_approved: userData.is_approved,
-                is_verified: userData.is_verified,
-                profile_photo_url: userData.profile_photo_url,
-                is_new: false
+                id: newUser.id,
+                email: newUser.email,
+                full_name: newUser.full_name,
+                role: newUser.role,
+                wallet_balance: newUser.wallet_balance,
+                is_approved: newUser.is_approved,
+                is_verified: newUser.is_verified,
+                profile_photo_url: newUser.profile_photo_url,
+                is_new: true
             }
         });
 
@@ -549,17 +724,12 @@ app.post('/api/auth/google', async (req, res) => {
 app.get('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', id)
             .single();
-
-        if (error) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
+        if (error) return res.status(404).json({ error: 'User not found' });
         return res.json({ user });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -570,21 +740,13 @@ app.get('/api/users/:id', async (req, res) => {
 app.get('/api/users/email/:email', async (req, res) => {
     try {
         const { email } = req.params;
-
-        if (!isValidEmail(email)) {
-            return res.status(400).json({ error: 'Invalid email format' });
-        }
-
+        if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
             .eq('email', email)
             .single();
-
-        if (error) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
+        if (error) return res.status(404).json({ error: 'User not found' });
         return res.json({ user });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -596,7 +758,6 @@ app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { full_name, phone, location, bio, skills, role } = req.body;
-
         const updates = {};
         if (full_name !== undefined) updates.full_name = full_name;
         if (phone !== undefined) updates.phone = phone;
@@ -604,18 +765,13 @@ app.put('/api/users/:id', async (req, res) => {
         if (bio !== undefined) updates.bio = bio;
         if (skills !== undefined) updates.skills = skills;
         if (role !== undefined) updates.role = role;
-
         const { data: user, error } = await supabase
             .from('users')
             .update(updates)
             .eq('id', id)
             .select()
             .single();
-
-        if (error) {
-            return res.status(400).json({ error: 'Update failed' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Update failed' });
         return res.json({ success: true, user });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -627,28 +783,17 @@ app.delete('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { admin_id } = req.body;
-
-        // Check if admin
         const { data: admin, error: adminError } = await supabase
             .from('users')
             .select('role')
             .eq('id', admin_id)
             .single();
-
-        if (adminError || admin.role !== 'admin') {
-            return res.status(403).json({ error: 'Admin access required' });
-        }
-
+        if (adminError || admin.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
         const { error } = await supabase
             .from('users')
             .update({ is_verified: false, is_approved: false })
             .eq('id', id);
-
-        if (error) {
-            return res.status(400).json({ error: 'Delete failed' });
-        }
-
-        // Log admin action
+        if (error) return res.status(400).json({ error: 'Delete failed' });
         await supabase.from('admin_logs').insert({
             admin_id: admin_id,
             action: 'delete_user',
@@ -656,7 +801,6 @@ app.delete('/api/users/:id', async (req, res) => {
             target_id: id,
             details: { deleted_by: admin_id }
         });
-
         return res.json({ success: true, message: 'User deactivated' });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -673,17 +817,12 @@ app.delete('/api/users/:id', async (req, res) => {
 app.get('/api/transactions/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-
         const { data: transactions, error } = await supabase
             .from('transactions')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch transactions' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch transactions' });
         return res.json({ transactions: transactions || [] });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -693,17 +832,16 @@ app.get('/api/transactions/user/:userId', async (req, res) => {
 // Get all transactions (admin only)
 app.get('/api/admin/transactions', async (req, res) => {
     try {
-        const { data: transactions, error } = await supabase
-            .from('transactions')
-            .select('*, user:user_id(full_name, email)')
-            .order('created_at', { ascending: false })
-            .limit(100);
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch transactions' });
-        }
-
-        return res.json({ transactions: transactions || [] });
+        const { limit = 100, offset = 0, type, status } = req.query;
+        let query = supabase.from('transactions').select('*, user:user_id(full_name, email)').order('created_at', { ascending: false });
+        if (type) query = query.eq('type', type);
+        if (status) query = query.eq('status', status);
+        const { data: transactions, error } = await query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+        if (error) return res.status(400).json({ error: 'Failed to fetch transactions' });
+        const { count } = await supabase.from('transactions').select('*', { count: 'exact', head: true });
+        if (type) query = query.eq('type', type);
+        if (status) query = query.eq('status', status);
+        return res.json({ transactions: transactions || [], total: count || 0 });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
     }
@@ -719,14 +857,12 @@ app.post('/api/deposit/request', async (req, res) => {
     try {
         const { user_id, amount, method, reference, user_email, user_name } = req.body;
 
-        // Validate input
         if (!user_id || !amount || amount <= 0 || !reference) {
             return res.status(400).json({ 
                 error: 'Invalid deposit request. Please provide amount and reference.' 
             });
         }
 
-        // Get user details
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('full_name, email, wallet_balance')
@@ -737,7 +873,6 @@ app.post('/api/deposit/request', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Create a pending deposit transaction record
         const { data: depositRecord, error: depositError } = await supabase
             .from('transactions')
             .insert({
@@ -755,10 +890,8 @@ app.post('/api/deposit/request', async (req, res) => {
 
         if (depositError) {
             console.error('Deposit record error:', depositError);
-            // Continue anyway, we still want to notify admin
         }
 
-        // Send notification to Telegram bot
         const depositMessage = `
 💰 *New Deposit Request!*
 
@@ -777,8 +910,16 @@ app.post('/api/deposit/request', async (req, res) => {
 *Built by Rshiraz* 🇰🇪
         `;
 
-        // Send to bot using sendNotification
         notifyBot('sendNotification', depositMessage);
+
+        // Also log to admin logs
+        await supabase.from('admin_logs').insert({
+            admin_id: null,
+            action: 'deposit_request',
+            target_type: 'user',
+            target_id: user_id,
+            details: { amount, method, reference, user: user }
+        });
 
         return res.json({
             success: true,
@@ -795,7 +936,7 @@ app.post('/api/deposit/request', async (req, res) => {
 
 // ============================================================
 // ════════════════════════════════════════════════════════════
-// ADMIN DEPOSIT MANAGEMENT (NEW - FOR ADMIN PANEL)
+// ADMIN DEPOSIT MANAGEMENT
 // ════════════════════════════════════════════════════════════
 // ============================================================
 
@@ -822,16 +963,21 @@ app.get('/api/admin/deposits/pending', async (req, res) => {
 // Get all deposits (admin only) – with filter options
 app.get('/api/admin/deposits', async (req, res) => {
     try {
-        const { status, limit = 50 } = req.query;
+        const { status, limit = 50, offset = 0 } = req.query;
         let query = supabase.from('transactions').select('*, user:user_id(full_name, email)').eq('type', 'deposit');
         if (status) query = query.eq('status', status);
-        const { data: deposits, error } = await query.order('created_at', { ascending: false }).limit(parseInt(limit));
+        const { data: deposits, error } = await query
+            .order('created_at', { ascending: false })
+            .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
         if (error) {
             return res.status(400).json({ error: 'Failed to fetch deposits' });
         }
 
-        return res.json({ deposits: deposits || [] });
+        const { count } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'deposit');
+        if (status) query = query.eq('status', status);
+
+        return res.json({ deposits: deposits || [], total: count || 0 });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
     }
@@ -844,6 +990,22 @@ app.put('/api/admin/deposits/approve', async (req, res) => {
 
         if (!deposit_id || !user_id || !amount) {
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Check if deposit exists and is pending
+        const { data: depositCheck, error: checkError } = await supabase
+            .from('transactions')
+            .select('status')
+            .eq('id', deposit_id)
+            .eq('type', 'deposit')
+            .single();
+
+        if (checkError || !depositCheck) {
+            return res.status(404).json({ error: 'Deposit not found' });
+        }
+
+        if (depositCheck.status !== 'pending') {
+            return res.status(400).json({ error: 'Deposit is already processed' });
         }
 
         // Update transaction status to completed
@@ -884,7 +1046,7 @@ app.put('/api/admin/deposits/approve', async (req, res) => {
             action: 'approve_deposit',
             target_type: 'deposit',
             target_id: deposit_id,
-            details: { amount, user: user }
+            details: { amount, user: { id: user_id, email: user.email, name: user.full_name } }
         });
 
         // Send notification to admin (and optionally to user)
@@ -899,7 +1061,11 @@ app.put('/api/admin/deposits/approve', async (req, res) => {
 *Built by Rshiraz* 🇰🇪
         `);
 
-        return res.json({ success: true, message: 'Deposit approved and funds added', new_balance: newBalance });
+        return res.json({ 
+            success: true, 
+            message: 'Deposit approved and funds added', 
+            new_balance: newBalance 
+        });
     } catch (error) {
         console.error('Approve deposit error:', error);
         return res.status(500).json({ error: 'Server error' });
@@ -913,6 +1079,22 @@ app.put('/api/admin/deposits/reject', async (req, res) => {
 
         if (!deposit_id) {
             return res.status(400).json({ error: 'Missing deposit ID' });
+        }
+
+        // Check if deposit exists and is pending
+        const { data: depositCheck, error: checkError } = await supabase
+            .from('transactions')
+            .select('status')
+            .eq('id', deposit_id)
+            .eq('type', 'deposit')
+            .single();
+
+        if (checkError || !depositCheck) {
+            return res.status(404).json({ error: 'Deposit not found' });
+        }
+
+        if (depositCheck.status !== 'pending') {
+            return res.status(400).json({ error: 'Deposit is already processed' });
         }
 
         // Update transaction status to failed
@@ -935,6 +1117,15 @@ app.put('/api/admin/deposits/reject', async (req, res) => {
             details: { rejected_by: admin_id }
         });
 
+        notifyBot('sendNotification', `
+❌ *Deposit Rejected!*
+
+Deposit ID: ${deposit_id}
+Rejected by admin
+
+*Built by Rshiraz* 🇰🇪
+        `);
+
         return res.json({ success: true, message: 'Deposit rejected' });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -950,7 +1141,8 @@ app.put('/api/admin/deposits/reject', async (req, res) => {
 // Get all active tasks
 app.get('/api/tasks', async (req, res) => {
     try {
-        const { data: tasks, error } = await supabase
+        const { limit = 50, offset = 0, category } = req.query;
+        let query = supabase
             .from('tasks')
             .select(`
                 *,
@@ -960,14 +1152,24 @@ app.get('/api/tasks', async (req, res) => {
                     profile_photo_url
                 )
             `)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false });
+            .eq('status', 'active');
+
+        if (category) query = query.eq('category', category);
+
+        const { data: tasks, error } = await query
+            .order('created_at', { ascending: false })
+            .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
         if (error) {
             return res.status(400).json({ error: 'Failed to fetch tasks' });
         }
 
-        return res.json({ tasks: tasks || [] });
+        const { count } = await supabase
+            .from('tasks')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'active');
+
+        return res.json({ tasks: tasks || [], total: count || 0 });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
     }
@@ -977,7 +1179,6 @@ app.get('/api/tasks', async (req, res) => {
 app.get('/api/tasks/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        
         const { data: task, error } = await supabase
             .from('tasks')
             .select(`
@@ -991,11 +1192,7 @@ app.get('/api/tasks/:id', async (req, res) => {
             `)
             .eq('id', id)
             .single();
-
-        if (error) {
-            return res.status(404).json({ error: 'Task not found' });
-        }
-
+        if (error) return res.status(404).json({ error: 'Task not found' });
         return res.json({ task });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1006,18 +1203,43 @@ app.get('/api/tasks/:id', async (req, res) => {
 app.get('/api/tasks/advertisor/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-
         const { data: tasks, error } = await supabase
             .from('tasks')
             .select('*')
             .eq('advertisor_id', userId)
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch tasks' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch tasks' });
         return res.json({ tasks: tasks || [] });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get freelancer's applied tasks
+app.get('/api/tasks/applied/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { data: completions, error } = await supabase
+            .from('task_completions')
+            .select(`
+                task_id,
+                task:task_id (
+                    *,
+                    advertisor:advertisor_id (
+                        full_name,
+                        email,
+                        profile_photo_url
+                    )
+                ),
+                status,
+                created_at,
+                amount_earned
+            `)
+            .eq('freelancer_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) return res.status(400).json({ error: 'Failed to fetch applied tasks' });
+        return res.json({ applications: completions || [] });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
     }
@@ -1038,37 +1260,25 @@ app.post('/api/tasks', async (req, res) => {
             completion_requirements
         } = req.body;
 
-        // Validate required fields
         if (!title || !description || !category || !budget_per_completion || !total_budget || !max_completions || !advertisor_id) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Check advertisor
         const { data: advertisor, error: userError } = await supabase
             .from('users')
             .select('role, is_approved, wallet_balance, full_name, email')
             .eq('id', advertisor_id)
             .single();
 
-        if (userError || !advertisor) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (advertisor.role !== 'advertisor') {
-            return res.status(403).json({ error: 'Only advertisers can post tasks' });
-        }
-
-        if (!advertisor.is_approved) {
-            return res.status(403).json({ error: 'Your account is pending admin approval' });
-        }
-
+        if (userError || !advertisor) return res.status(404).json({ error: 'User not found' });
+        if (advertisor.role !== 'advertisor') return res.status(403).json({ error: 'Only advertisers can post tasks' });
+        if (!advertisor.is_approved) return res.status(403).json({ error: 'Your account is pending admin approval' });
         if (advertisor.wallet_balance < total_budget) {
             return res.status(400).json({ 
                 error: `Insufficient balance. Available: $${advertisor.wallet_balance.toFixed(2)}, Required: $${total_budget.toFixed(2)}`
             });
         }
 
-        // Create task
         const { data: task, error } = await supabase
             .from('tasks')
             .insert({
@@ -1087,19 +1297,13 @@ app.post('/api/tasks', async (req, res) => {
             .select()
             .single();
 
-        if (error) {
-            return res.status(400).json({ error: 'Failed to create task' });
-        }
+        if (error) return res.status(400).json({ error: 'Failed to create task' });
 
-        // Hold funds
         await supabase
             .from('users')
-            .update({
-                wallet_balance: advertisor.wallet_balance - total_budget
-            })
+            .update({ wallet_balance: advertisor.wallet_balance - total_budget })
             .eq('id', advertisor_id);
 
-        // Create transaction
         await supabase
             .from('transactions')
             .insert({
@@ -1114,10 +1318,17 @@ app.post('/api/tasks', async (req, res) => {
                 admin_notes: 'Auto-held for task'
             });
 
-        // Send notification
         notifyBot('notifyTaskPosted', task, {
             full_name: advertisor.full_name,
             email: advertisor.email
+        });
+
+        await supabase.from('admin_logs').insert({
+            admin_id: null,
+            action: 'task_created',
+            target_type: 'task',
+            target_id: task.id,
+            details: { title, advertisor: advertisor.email }
         });
 
         return res.json({ 
@@ -1125,7 +1336,6 @@ app.post('/api/tasks', async (req, res) => {
             message: 'Task created successfully. Pending admin approval.',
             task 
         });
-
     } catch (error) {
         console.error('Task creation error:', error);
         notifyBot('notifyError', error, 'task_creation');
@@ -1138,21 +1348,24 @@ app.put('/api/tasks/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
-
         if (!['pending', 'active', 'paused', 'completed', 'cancelled'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status' });
         }
-
         const { data: task, error } = await supabase
             .from('tasks')
             .update({ status })
             .eq('id', id)
             .select()
             .single();
+        if (error) return res.status(400).json({ error: 'Failed to update task' });
 
-        if (error) {
-            return res.status(400).json({ error: 'Failed to update task' });
-        }
+        await supabase.from('admin_logs').insert({
+            admin_id: null,
+            action: 'task_status_change',
+            target_type: 'task',
+            target_id: id,
+            details: { new_status: status }
+        });
 
         return res.json({ success: true, task });
     } catch (error) {
@@ -1171,7 +1384,6 @@ app.post('/api/completions', async (req, res) => {
     try {
         const { task_id, freelancer_id, submission_text, submission_file_url } = req.body;
 
-        // Check if already submitted
         const { data: existing, error: checkError } = await supabase
             .from('task_completions')
             .select('*')
@@ -1179,33 +1391,22 @@ app.post('/api/completions', async (req, res) => {
             .eq('freelancer_id', freelancer_id)
             .single();
 
-        if (existing) {
-            return res.status(400).json({ error: 'You already submitted for this task' });
-        }
+        if (existing) return res.status(400).json({ error: 'You already submitted for this task' });
 
-        // Get task details
         const { data: task, error: taskError } = await supabase
             .from('tasks')
             .select('budget_per_completion, title, advertisor_id')
             .eq('id', task_id)
             .single();
+        if (taskError) return res.status(404).json({ error: 'Task not found' });
 
-        if (taskError) {
-            return res.status(404).json({ error: 'Task not found' });
-        }
-
-        // Get freelancer details
         const { data: freelancer, error: freelancerError } = await supabase
             .from('users')
             .select('full_name, email')
             .eq('id', freelancer_id)
             .single();
+        if (freelancerError) return res.status(404).json({ error: 'Freelancer not found' });
 
-        if (freelancerError) {
-            return res.status(404).json({ error: 'Freelancer not found' });
-        }
-
-        // Create completion
         const { data: completion, error } = await supabase
             .from('task_completions')
             .insert({
@@ -1219,11 +1420,8 @@ app.post('/api/completions', async (req, res) => {
             .select()
             .single();
 
-        if (error) {
-            return res.status(400).json({ error: 'Failed to submit' });
-        }
+        if (error) return res.status(400).json({ error: 'Failed to submit' });
 
-        // Send notification
         notifyBot('notifyTaskCompletion', completion, {
             title: task.title
         }, {
@@ -1243,7 +1441,6 @@ app.post('/api/completions', async (req, res) => {
 app.get('/api/completions/freelancer/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-
         const { data: completions, error } = await supabase
             .from('task_completions')
             .select(`
@@ -1258,11 +1455,7 @@ app.get('/api/completions/freelancer/:userId', async (req, res) => {
             `)
             .eq('freelancer_id', userId)
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch applications' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch applications' });
         return res.json({ completions: completions || [] });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1273,7 +1466,6 @@ app.get('/api/completions/freelancer/:userId', async (req, res) => {
 app.get('/api/completions/task/:taskId', async (req, res) => {
     try {
         const { taskId } = req.params;
-
         const { data: completions, error } = await supabase
             .from('task_completions')
             .select(`
@@ -1286,11 +1478,7 @@ app.get('/api/completions/task/:taskId', async (req, res) => {
             `)
             .eq('task_id', taskId)
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch completions' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch completions' });
         return res.json({ completions: completions || [] });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1302,44 +1490,28 @@ app.put('/api/completions/:id/approve', async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Get completion details
         const { data: completion, error: fetchError } = await supabase
             .from('task_completions')
             .select('*')
             .eq('id', id)
             .single();
+        if (fetchError || !completion) return res.status(404).json({ error: 'Completion not found' });
+        if (completion.status === 'approved') return res.status(400).json({ error: 'Already approved' });
 
-        if (fetchError || !completion) {
-            return res.status(404).json({ error: 'Completion not found' });
-        }
-
-        if (completion.status === 'approved') {
-            return res.status(400).json({ error: 'Already approved' });
-        }
-
-        // Get task details
         const { data: task, error: taskError } = await supabase
             .from('tasks')
             .select('title, remaining_budget')
             .eq('id', completion.task_id)
             .single();
+        if (taskError) return res.status(404).json({ error: 'Task not found' });
 
-        if (taskError) {
-            return res.status(404).json({ error: 'Task not found' });
-        }
-
-        // Get freelancer details
         const { data: freelancer, error: freelancerError } = await supabase
             .from('users')
             .select('full_name, email, wallet_balance, total_earned')
             .eq('id', completion.freelancer_id)
             .single();
+        if (freelancerError) return res.status(404).json({ error: 'Freelancer not found' });
 
-        if (freelancerError) {
-            return res.status(404).json({ error: 'Freelancer not found' });
-        }
-
-        // Update completion status
         const { data: updated, error: updateError } = await supabase
             .from('task_completions')
             .update({
@@ -1349,12 +1521,8 @@ app.put('/api/completions/:id/approve', async (req, res) => {
             .eq('id', id)
             .select()
             .single();
+        if (updateError) return res.status(400).json({ error: 'Failed to approve' });
 
-        if (updateError) {
-            return res.status(400).json({ error: 'Failed to approve' });
-        }
-
-        // Update freelancer wallet
         const newBalance = (freelancer.wallet_balance || 0) + completion.amount_earned;
         const newTotalEarned = (freelancer.total_earned || 0) + completion.amount_earned;
 
@@ -1366,7 +1534,6 @@ app.put('/api/completions/:id/approve', async (req, res) => {
             })
             .eq('id', completion.freelancer_id);
 
-        // Update task remaining budget
         const newRemaining = (task.remaining_budget || 0) - completion.amount_earned;
         await supabase
             .from('tasks')
@@ -1376,7 +1543,6 @@ app.put('/api/completions/:id/approve', async (req, res) => {
             })
             .eq('id', completion.task_id);
 
-        // Check if task is fully completed
         const { data: updatedTask } = await supabase
             .from('tasks')
             .select('completed_count, max_completions')
@@ -1390,7 +1556,6 @@ app.put('/api/completions/:id/approve', async (req, res) => {
                 .eq('id', completion.task_id);
         }
 
-        // Create transaction
         await supabase
             .from('transactions')
             .insert({
@@ -1405,7 +1570,6 @@ app.put('/api/completions/:id/approve', async (req, res) => {
                 related_completion_id: id
             });
 
-        // Send notification
         notifyBot('notifyCompletionApproved', completion, {
             title: task.title
         }, {
@@ -1413,12 +1577,19 @@ app.put('/api/completions/:id/approve', async (req, res) => {
             email: freelancer.email
         });
 
+        await supabase.from('admin_logs').insert({
+            admin_id: null,
+            action: 'approve_completion',
+            target_type: 'completion',
+            target_id: id,
+            details: { task_title: task.title, freelancer: freelancer.email, amount: completion.amount_earned }
+        });
+
         return res.json({
             success: true,
             message: 'Task completion approved. Payment processed.',
             completion: updated
         });
-
     } catch (error) {
         console.error('Approval error:', error);
         notifyBot('notifyError', error, 'completion_approval');
@@ -1437,35 +1608,23 @@ app.post('/api/withdrawals', async (req, res) => {
     try {
         const { user_id, amount, payment_method, payment_details } = req.body;
 
-        // Validate
         if (!user_id || !amount || !payment_method || !payment_details) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Check user balance
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('wallet_balance, full_name, email')
             .eq('id', user_id)
             .single();
 
-        if (userError) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        if (userError) return res.status(404).json({ error: 'User not found' });
+        if (user.wallet_balance < amount) return res.status(400).json({ error: 'Insufficient balance' });
+        if (amount < 3) return res.status(400).json({ error: 'Minimum withdrawal is $3' });
 
-        if (user.wallet_balance < amount) {
-            return res.status(400).json({ error: 'Insufficient balance' });
-        }
-
-        if (amount < 3) {
-            return res.status(400).json({ error: 'Minimum withdrawal is $3' });
-        }
-
-        // Calculate fee (10%)
         const fee = amount * 0.10;
         const netAmount = amount - fee;
 
-        // Create withdrawal request
         const { data: withdrawal, error } = await supabase
             .from('withdrawal_requests')
             .insert({
@@ -1480,15 +1639,20 @@ app.post('/api/withdrawals', async (req, res) => {
             .select()
             .single();
 
-        if (error) {
-            return res.status(400).json({ error: 'Failed to request withdrawal' });
-        }
+        if (error) return res.status(400).json({ error: 'Failed to request withdrawal' });
 
-        // Send notification
         notifyBot('notifyWithdrawal', {
             full_name: user.full_name,
             email: user.email
         }, withdrawal);
+
+        await supabase.from('admin_logs').insert({
+            admin_id: null,
+            action: 'withdrawal_request',
+            target_type: 'withdrawal',
+            target_id: withdrawal.id,
+            details: { user: user.email, amount, netAmount, method: payment_method }
+        });
 
         return res.json({
             success: true,
@@ -1506,17 +1670,12 @@ app.post('/api/withdrawals', async (req, res) => {
 app.get('/api/withdrawals/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-
         const { data: withdrawals, error } = await supabase
             .from('withdrawal_requests')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch withdrawals' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch withdrawals' });
         return res.json({ withdrawals: withdrawals || [] });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1533,18 +1692,13 @@ app.put('/api/withdrawals/:id/process', async (req, res) => {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        // Get withdrawal details
         const { data: withdrawal, error: fetchError } = await supabase
             .from('withdrawal_requests')
             .select('*')
             .eq('id', id)
             .single();
+        if (fetchError || !withdrawal) return res.status(404).json({ error: 'Withdrawal not found' });
 
-        if (fetchError || !withdrawal) {
-            return res.status(404).json({ error: 'Withdrawal not found' });
-        }
-
-        // Update withdrawal
         const { data: updated, error: updateError } = await supabase
             .from('withdrawal_requests')
             .update({
@@ -1557,11 +1711,8 @@ app.put('/api/withdrawals/:id/process', async (req, res) => {
             .select()
             .single();
 
-        if (updateError) {
-            return res.status(400).json({ error: 'Failed to process withdrawal' });
-        }
+        if (updateError) return res.status(400).json({ error: 'Failed to process withdrawal' });
 
-        // If completed, deduct from user balance
         if (status === 'completed') {
             const { data: user, error: userError } = await supabase
                 .from('users')
@@ -1578,7 +1729,6 @@ app.put('/api/withdrawals/:id/process', async (req, res) => {
                     })
                     .eq('id', withdrawal.user_id);
 
-                // Create transaction
                 await supabase
                     .from('transactions')
                     .insert({
@@ -1593,6 +1743,14 @@ app.put('/api/withdrawals/:id/process', async (req, res) => {
                     });
             }
         }
+
+        await supabase.from('admin_logs').insert({
+            admin_id: admin_id,
+            action: 'process_withdrawal',
+            target_type: 'withdrawal',
+            target_id: id,
+            details: { new_status: status }
+        });
 
         return res.json({ success: true, withdrawal: updated });
     } catch (error) {
@@ -1610,16 +1768,15 @@ app.put('/api/withdrawals/:id/process', async (req, res) => {
 // Get all users (admin only)
 app.get('/api/admin/users', async (req, res) => {
     try {
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch users' });
-        }
-
-        return res.json({ users });
+        const { limit = 50, offset = 0, role, approved } = req.query;
+        let query = supabase.from('users').select('*').order('created_at', { ascending: false });
+        if (role) query = query.eq('role', role);
+        if (approved === 'true') query = query.eq('is_approved', true);
+        if (approved === 'false') query = query.eq('is_approved', false);
+        const { data: users, error } = await query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+        if (error) return res.status(400).json({ error: 'Failed to fetch users' });
+        const { count } = await supabase.from('users').select('*', { count: 'exact', head: true });
+        return res.json({ users, total: count || 0 });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
     }
@@ -1629,17 +1786,12 @@ app.get('/api/admin/users', async (req, res) => {
 app.get('/api/admin/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', id)
             .single();
-
-        if (error) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
+        if (error) return res.status(404).json({ error: 'User not found' });
         return res.json({ user });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1651,19 +1803,13 @@ app.put('/api/admin/users/:id/approve', async (req, res) => {
     try {
         const { id } = req.params;
         const { admin_id } = req.body;
-
         const { data: user, error } = await supabase
             .from('users')
             .update({ is_approved: true })
             .eq('id', id)
             .select()
             .single();
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to approve user' });
-        }
-
-        // Log admin action
+        if (error) return res.status(400).json({ error: 'Failed to approve user' });
         await supabase
             .from('admin_logs')
             .insert({
@@ -1673,15 +1819,12 @@ app.put('/api/admin/users/:id/approve', async (req, res) => {
                 target_id: id,
                 details: { user: user }
             });
-
-        // Send notification
         if (user.role === 'advertisor') {
             notifyBot('notifyAdvertisorApproved', {
                 full_name: user.full_name,
                 email: user.email
             });
         }
-
         return res.json({
             success: true,
             message: 'User approved',
@@ -1697,23 +1840,16 @@ app.put('/api/admin/users/:id/role', async (req, res) => {
     try {
         const { id } = req.params;
         const { role, admin_id } = req.body;
-
         if (!['freelancer', 'advertisor', 'admin'].includes(role)) {
             return res.status(400).json({ error: 'Invalid role' });
         }
-
         const { data: user, error } = await supabase
             .from('users')
             .update({ role: role })
             .eq('id', id)
             .select()
             .single();
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to update role' });
-        }
-
-        // Log admin action
+        if (error) return res.status(400).json({ error: 'Failed to update role' });
         await supabase
             .from('admin_logs')
             .insert({
@@ -1723,7 +1859,6 @@ app.put('/api/admin/users/:id/role', async (req, res) => {
                 target_id: id,
                 details: { new_role: role }
             });
-
         return res.json({
             success: true,
             message: 'Role updated',
@@ -1737,20 +1872,15 @@ app.put('/api/admin/users/:id/role', async (req, res) => {
 // Get admin logs
 app.get('/api/admin/logs', async (req, res) => {
     try {
-        const { limit = 50, offset = 0 } = req.query;
-
-        const { data: logs, error } = await supabase
+        const { limit = 50, offset = 0, action } = req.query;
+        let query = supabase
             .from('admin_logs')
             .select('*, admin:admin_id(full_name, email)')
-            .order('created_at', { ascending: false })
-            .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch logs' });
-        }
-
+            .order('created_at', { ascending: false });
+        if (action) query = query.eq('action', action);
+        const { data: logs, error } = await query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+        if (error) return res.status(400).json({ error: 'Failed to fetch logs' });
         const { count } = await supabase.from('admin_logs').select('*', { count: 'exact', head: true });
-
         return res.json({ logs, total: count || 0 });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1771,11 +1901,7 @@ app.get('/api/admin/tasks/pending', async (req, res) => {
             `)
             .eq('status', 'pending')
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch tasks' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch tasks' });
         return res.json({ tasks });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1804,11 +1930,7 @@ app.get('/api/admin/completions/pending', async (req, res) => {
             `)
             .eq('status', 'pending')
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch completions' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch completions' });
         return res.json({ completions });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1830,11 +1952,7 @@ app.get('/api/admin/withdrawals/pending', async (req, res) => {
             `)
             .eq('status', 'pending')
             .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(400).json({ error: 'Failed to fetch withdrawals' });
-        }
-
+        if (error) return res.status(400).json({ error: 'Failed to fetch withdrawals' });
         return res.json({ withdrawals });
     } catch (error) {
         return res.status(500).json({ error: 'Server error' });
@@ -1850,7 +1968,6 @@ app.post('/api/admin/wallet/add', async (req, res) => {
             return res.status(400).json({ error: 'Amount must be positive' });
         }
 
-        // Get user
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('wallet_balance, full_name, email')
@@ -1873,7 +1990,6 @@ app.post('/api/admin/wallet/add', async (req, res) => {
             return res.status(400).json({ error: 'Failed to update wallet' });
         }
 
-        // Create transaction
         await supabase
             .from('transactions')
             .insert({
@@ -1887,11 +2003,18 @@ app.post('/api/admin/wallet/add', async (req, res) => {
                 admin_notes: `Added by admin ${admin_id || 'system'}`
             });
 
-        // Send notification
         notifyBot('notifyDeposit', {
             full_name: user.full_name,
             email: user.email
         }, amount, description);
+
+        await supabase.from('admin_logs').insert({
+            admin_id: admin_id,
+            action: 'manual_deposit',
+            target_type: 'user',
+            target_id: user_id,
+            details: { amount, description, new_balance: newBalance }
+        });
 
         return res.json({
             success: true,
@@ -2058,6 +2181,7 @@ app.listen(PORT, () => {
         'GET  /',
         'GET  /api/health',
         'GET  /api/stats',
+        'GET  /api/system',
         'GET  /api/test/notification',
         'POST /api/test/notification',
         'POST /api/auth/google',
@@ -2066,6 +2190,7 @@ app.listen(PORT, () => {
         'PUT  /api/users/:id',
         'DELETE /api/users/:id',
         'GET  /api/transactions/user/:id',
+        'GET  /api/admin/transactions',
         'POST /api/deposit/request',
         'GET  /api/admin/deposits/pending',
         'GET  /api/admin/deposits',
@@ -2074,6 +2199,7 @@ app.listen(PORT, () => {
         'GET  /api/tasks',
         'GET  /api/tasks/:id',
         'GET  /api/tasks/advertisor/:userId',
+        'GET  /api/tasks/applied/:userId',
         'POST /api/tasks',
         'PUT  /api/tasks/:id/status',
         'POST /api/completions',
@@ -2092,7 +2218,7 @@ app.listen(PORT, () => {
         'GET  /api/admin/tasks/pending',
         'GET  /api/admin/completions/pending',
         'GET  /api/admin/withdrawals/pending',
-        'POST /api/admin/wallet/add',
+        'POST  /api/admin/wallet/add',
         'GET  /api/dashboard/freelancer/:userId',
         'GET  /api/dashboard/advertisor/:userId'
     ];
