@@ -8,7 +8,7 @@
 // ============================================================
 // ZURIFEX PLATFORM - COMPLETE BACKEND
 // Full API + Telegram Bot Integration + Advanced Analytics
-// Version: 5.0.0 (MEGA EDITION)
+// Version: 6.0.0 (ULTIMATE EDITION - ALL ROUTES INCLUDED)
 // ============================================================
 
 const express = require('express');
@@ -214,7 +214,7 @@ function isValidEmail(email) {
 app.get('/', (req, res) => {
     res.json({
         name: 'Zurifex API',
-        version: '5.0.0',
+        version: '6.0.0',
         message: 'Zurifex API is running 🇰🇪',
         status: 'online',
         bot: botConnected ? 'connected ✅' : 'disabled ⚠️',
@@ -711,7 +711,7 @@ app.get('/api/admin/transactions', async (req, res) => {
 
 // ============================================================
 // ════════════════════════════════════════════════════════════
-// DEPOSIT REQUEST ROUTE (FIXED - NOW WORKING)
+// DEPOSIT REQUEST ROUTE (FIXED - FULLY WORKING)
 // ════════════════════════════════════════════════════════════
 // ============================================================
 
@@ -777,6 +777,7 @@ app.post('/api/deposit/request', async (req, res) => {
 *Built by Rshiraz* 🇰🇪
         `;
 
+        // Send to bot using sendNotification
         notifyBot('sendNotification', depositMessage);
 
         return res.json({
