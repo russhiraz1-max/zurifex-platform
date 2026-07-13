@@ -7,8 +7,8 @@
 //  ╚══════╝░╚═════╝░╚═╝░░╚═╝╚═╝╚══════╝╚══════╝╚═╝░░╚═╝
 // ============================================================
 // ZURIFEX PLATFORM - COMPLETE BACKEND
-// Full API + Telegram Bot Integration + Advanced Analytics
-// Version: 6.0.0 (ULTIMATE EDITION - ALL ROUTES INCLUDED)
+// Full API + Telegram Bot + Admin Deposit Management
+// Version: 7.0.0 (ULTIMATE MEGA EDITION)
 // ============================================================
 
 const express = require('express');
@@ -214,7 +214,7 @@ function isValidEmail(email) {
 app.get('/', (req, res) => {
     res.json({
         name: 'Zurifex API',
-        version: '6.0.0',
+        version: '7.0.0',
         message: 'Zurifex API is running 🇰🇪',
         status: 'online',
         bot: botConnected ? 'connected ✅' : 'disabled ⚠️',
@@ -790,6 +790,154 @@ app.post('/api/deposit/request', async (req, res) => {
         console.error('Deposit request error:', error);
         notifyBot('notifyError', error, 'deposit_request');
         return res.status(500).json({ error: 'Server error. Please try again.' });
+    }
+});
+
+// ============================================================
+// ════════════════════════════════════════════════════════════
+// ADMIN DEPOSIT MANAGEMENT (NEW - FOR ADMIN PANEL)
+// ════════════════════════════════════════════════════════════
+// ============================================================
+
+// Get all pending deposits (admin only)
+app.get('/api/admin/deposits/pending', async (req, res) => {
+    try {
+        const { data: deposits, error } = await supabase
+            .from('transactions')
+            .select('*, user:user_id(full_name, email)')
+            .eq('type', 'deposit')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            return res.status(400).json({ error: 'Failed to fetch deposits' });
+        }
+
+        return res.json({ deposits: deposits || [] });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get all deposits (admin only) – with filter options
+app.get('/api/admin/deposits', async (req, res) => {
+    try {
+        const { status, limit = 50 } = req.query;
+        let query = supabase.from('transactions').select('*, user:user_id(full_name, email)').eq('type', 'deposit');
+        if (status) query = query.eq('status', status);
+        const { data: deposits, error } = await query.order('created_at', { ascending: false }).limit(parseInt(limit));
+
+        if (error) {
+            return res.status(400).json({ error: 'Failed to fetch deposits' });
+        }
+
+        return res.json({ deposits: deposits || [] });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Approve a pending deposit (admin only)
+app.put('/api/admin/deposits/approve', async (req, res) => {
+    try {
+        const { deposit_id, user_id, amount, admin_id } = req.body;
+
+        if (!deposit_id || !user_id || !amount) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Update transaction status to completed
+        const { error: updateError } = await supabase
+            .from('transactions')
+            .update({ status: 'completed' })
+            .eq('id', deposit_id)
+            .eq('type', 'deposit');
+
+        if (updateError) {
+            return res.status(400).json({ error: 'Failed to update deposit' });
+        }
+
+        // Add funds to user wallet
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('wallet_balance, full_name, email')
+            .eq('id', user_id)
+            .single();
+
+        if (userError) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const newBalance = (user.wallet_balance || 0) + amount;
+        const { error: balanceError } = await supabase
+            .from('users')
+            .update({ wallet_balance: newBalance })
+            .eq('id', user_id);
+
+        if (balanceError) {
+            return res.status(400).json({ error: 'Failed to update wallet' });
+        }
+
+        // Log admin action
+        await supabase.from('admin_logs').insert({
+            admin_id: admin_id,
+            action: 'approve_deposit',
+            target_type: 'deposit',
+            target_id: deposit_id,
+            details: { amount, user: user }
+        });
+
+        // Send notification to admin (and optionally to user)
+        notifyBot('sendNotification', `
+✅ *Deposit Approved!*
+
+👤 User: ${user.full_name}
+📧 Email: ${user.email}
+💵 Amount: $${amount.toFixed(2)}
+📊 New Balance: $${newBalance.toFixed(2)}
+
+*Built by Rshiraz* 🇰🇪
+        `);
+
+        return res.json({ success: true, message: 'Deposit approved and funds added', new_balance: newBalance });
+    } catch (error) {
+        console.error('Approve deposit error:', error);
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Reject a pending deposit (admin only)
+app.put('/api/admin/deposits/reject', async (req, res) => {
+    try {
+        const { deposit_id, admin_id } = req.body;
+
+        if (!deposit_id) {
+            return res.status(400).json({ error: 'Missing deposit ID' });
+        }
+
+        // Update transaction status to failed
+        const { error: updateError } = await supabase
+            .from('transactions')
+            .update({ status: 'failed' })
+            .eq('id', deposit_id)
+            .eq('type', 'deposit');
+
+        if (updateError) {
+            return res.status(400).json({ error: 'Failed to reject deposit' });
+        }
+
+        // Log admin action
+        await supabase.from('admin_logs').insert({
+            admin_id: admin_id,
+            action: 'reject_deposit',
+            target_type: 'deposit',
+            target_id: deposit_id,
+            details: { rejected_by: admin_id }
+        });
+
+        return res.json({ success: true, message: 'Deposit rejected' });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -1702,6 +1850,7 @@ app.post('/api/admin/wallet/add', async (req, res) => {
             return res.status(400).json({ error: 'Amount must be positive' });
         }
 
+        // Get user
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('wallet_balance, full_name, email')
@@ -1918,6 +2067,10 @@ app.listen(PORT, () => {
         'DELETE /api/users/:id',
         'GET  /api/transactions/user/:id',
         'POST /api/deposit/request',
+        'GET  /api/admin/deposits/pending',
+        'GET  /api/admin/deposits',
+        'PUT  /api/admin/deposits/approve',
+        'PUT  /api/admin/deposits/reject',
         'GET  /api/tasks',
         'GET  /api/tasks/:id',
         'GET  /api/tasks/advertisor/:userId',
